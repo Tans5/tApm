@@ -6,14 +6,14 @@ import android.util.Log
 import org.xmlpull.v1.XmlPullParser
 
 internal class PowerProfile private constructor(
-    private val application: Application,
-    private val itemValues: Map<String, String>,
-    private val arrayValues: Map<String, List<String>>
+    val application: Application,
+    val itemValues: Map<String, String>,
+    val arrayValues: Map<String, List<String>>
 ) {
 
-    private val cpuClusters: List<CpuCluster>
+    val cpuClusters: List<CpuCluster>
 
-    private val cpuCoreSize: Int
+    val cpuCoreSize: Int
 
     init {
         cpuClusters = initCpuClusters()
@@ -22,6 +22,11 @@ internal class PowerProfile private constructor(
         }
         cpuCoreSize = cpuClusters.sumOf { it.cpuCoreSize }
         Log.d(TAG, "CpuCoreSize=$cpuCoreSize")
+        Log.d(TAG, "Init PowerProfile success.")
+    }
+
+    fun getCpuClusterByCpuIndex(cpuIndex: Int): CpuCluster {
+        return cpuClusters.find { cpuIndex in it.cpuIndexRange }!!
     }
 
     private fun initCpuClusters(): List<CpuCluster> {
@@ -32,9 +37,9 @@ internal class PowerProfile private constructor(
         } ?: listOf(itemValues["cpu.clusters.cores"]!!.toInt()) // Single Cpu Cluster
         var cpuIndexStart = 0
         for ((index, cpuCoreSize) in cpuClusterCoreSizes.withIndex()) {
-            val clusterPower = itemValues["cpu.cluster_power.cluster$index"]!!.toFloat()
-            val cpuCorePower = arrayValues["cpu.core_power.cluster$index"]!!.map { it.toFloat() }
-            val cpuCoreSpeed = arrayValues["cpu.core_speeds.cluster$index"]!!.map { it.toInt() }
+            val clusterPower = itemValues["cpu.cluster_power.cluster$index"]!!.toDouble() ?: 0.0
+            val cpuCorePower = arrayValues["cpu.core_power.cluster$index"]!!.map { it.toDouble() }
+            val cpuCoreSpeed = arrayValues["cpu.core_speeds.cluster$index"]!!.map { it.toLong() }
             if (cpuCoreSpeed.size != cpuCorePower.size || cpuCoreSpeed.isEmpty()) {
                 error("CpuCluster$index, wrong CoreSpeedSize and CorePowerSize, CoreSpeedSize=${cpuCoreSpeed.size}, CorePowerSize=${cpuCorePower.size}")
             }
@@ -55,9 +60,9 @@ internal class PowerProfile private constructor(
 
     data class CpuCluster(
         val cpuCoreSize: Int,
-        val clusterPower: Float,
-        val cpuCorePower: List<Float>,
-        val cpuCoreSpeed: List<Int>,
+        val clusterPower: Double,
+        val cpuCorePower: List<Double>,
+        val cpuCoreSpeed: List<Long>,
         val cpuIndexRange: IntRange
     )
 
@@ -118,6 +123,7 @@ internal class PowerProfile private constructor(
                             val t = parser.text
                             array.add(t)
                             Log.d(TAG, "    <value>$t</value")
+                            continue
                         }
                     }
 
@@ -130,6 +136,7 @@ internal class PowerProfile private constructor(
                         }
                         parsingArray = attrName to mutableListOf()
                         Log.d(TAG, "<array \"name\"=\"$attrName\">")
+                        continue
                     }
 
                     // <item>
@@ -146,7 +153,17 @@ internal class PowerProfile private constructor(
                         val text = parser.text
                         itemValues[attrName] = text
                         Log.d(TAG, "<item \"name\"=\"$attrName\">$text</item>")
+                        continue
                     }
+
+                    // Ignore
+                    attrName = parser.getAttributeValue(null, "name")
+                    val t: String? = if (parser.next() == XmlPullParser.TEXT) {
+                        parser.text
+                    } else {
+                        null
+                    }
+                    Log.d(TAG, "Ignore tag=$tagName${if (attrName != null) ", name=$attrName" else ""}${if (t != null) ", value=$t" else ""}")
                 }
                 if (parsingArray != null) {
                     arrayValues[parsingArray.first] = parsingArray.second

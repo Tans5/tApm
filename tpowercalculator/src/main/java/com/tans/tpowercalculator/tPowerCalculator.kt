@@ -1,6 +1,7 @@
 package com.tans.tpowercalculator
 
 import android.app.Application
+import com.tans.tpowercalculator.internal.CpuStateSnapshotCapture
 import com.tans.tpowercalculator.internal.Executors
 import com.tans.tpowercalculator.internal.PowerProfile
 import com.tans.tpowercalculator.internal.tPowerLog
@@ -15,11 +16,14 @@ object tPowerCalculator {
             Executors.bgExecutors.execute {
                 tPowerLog.d(TAG, "Do init.")
                 runCatching {
-                    PowerProfile.parsePowerProfile(application)
+                    val powerProfile = PowerProfile.parsePowerProfile(application)
+                    val cpuStateSnapshotCapture = CpuStateSnapshotCapture(powerProfile)
                 }.onSuccess {
-
+                    tPowerLog.d(TAG, "Init success!!")
+                    callback?.onSuccess()
                 }.onFailure {
-                    callback?.onFail("Parse power profile fail", it)
+                    tPowerLog.e(TAG, "Init fail.", it)
+                    callback?.onFail(it.message ?: "", it)
                 }
             }
         } else {
