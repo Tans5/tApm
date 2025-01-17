@@ -6,31 +6,7 @@ internal class CpuStateSnapshotCapture(
     private val powerProfile: PowerProfile
 ) {
     init {
-        check()
         tPowerLog.d(TAG, "Init CpuStateSnapshotCapture success.")
-    }
-
-
-    private fun check() {
-
-        for (cpuIndex in 0 until powerProfile.cpuCoreSize) {
-            val cluster = powerProfile.getCpuClusterByCpuIndex(cpuIndex)
-            val speedAndTime = readCpuCoreTime(cpuIndex)
-            if (cluster.cpuCoreSpeed.size != speedAndTime.size) {
-                error("Wrong core time size ${speedAndTime.size}，need ${cluster.cpuCoreSpeed.size}.")
-            }
-            for (i in speedAndTime.indices) {
-                val clusterSpeed = cluster.cpuCoreSpeed[i]
-                val readerSpeed = speedAndTime[i].first
-                if (clusterSpeed != readerSpeed) {
-                    error("Wrong cpu speed $readerSpeed, need $clusterSpeed.")
-                }
-            }
-        }
-
-        val currentProcessTime = readCurrentProcessCpuCoreTime()
-        println(currentProcessTime)
-        // TODO: Check
     }
 
     companion object {
