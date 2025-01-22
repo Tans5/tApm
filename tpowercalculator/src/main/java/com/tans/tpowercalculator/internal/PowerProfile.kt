@@ -53,7 +53,8 @@ internal class PowerProfile private constructor(
     val gpsProfile: ComponentProfile.GpsProfile,
     val modemProfile: ComponentProfile.ModemProfile,
     val videoProfile: ComponentProfile.VideoProfile,
-    val wifiProfile: ComponentProfile.WifiProfile
+    val wifiProfile: ComponentProfile.WifiProfile,
+    val batteryCapacity: Int
 ) {
 
     init {
@@ -67,6 +68,7 @@ internal class PowerProfile private constructor(
         tPowerLog.d(TAG, "ModemProfile: $modemProfile")
         tPowerLog.d(TAG, "VideoProfile: $videoProfile")
         tPowerLog.d(TAG, "WifiProfile: $wifiProfile")
+        tPowerLog.d(TAG, "BatteryCapacity: $batteryCapacity")
     }
 
     companion object {
@@ -87,11 +89,20 @@ internal class PowerProfile private constructor(
             val modemProfileBuilder = ComponentProfile.ModemProfile.Companion.Builder()
             val videoProfileBuilder = ComponentProfile.VideoProfile.Companion.Builder()
             val wifiProfileBuilder = ComponentProfile.WifiProfile.Companion.Builder()
+            var batteryCapacity = 0
 
 
-            val reClusterPowerRegex = "cpu.cluster_power.cluster([0-9]*)".toRegex()
-            val reCoreSpeedsRegex = "cpu.core_speeds.cluster([0-9]*)".toRegex()
-            val reCorePowerRegex = "cpu.core_power.cluster([0-9]*)".toRegex()
+            val reClusterPower = "cpu.cluster_power.cluster([0-9]*)".toRegex()
+            val reCoreSpeeds = "cpu.core_speeds.cluster([0-9]*)".toRegex()
+            val reCorePower = "cpu.core_power.cluster([0-9]*)".toRegex()
+
+
+            val reScreenAmbient = "ambient.on.display([0-9]*)".toRegex()
+            val reScreenOn = "screen.on.display([0-9]*)".toRegex()
+            val reScreenFull = "screen.full.display([0-9]*)".toRegex()
+
+            val reCpuClusterSpeed = "cpu.speeds.cluster([0-9]*)".toRegex()
+            val reCpuClusterActive = "cpu.active.cluster([0-9]*)".toRegex()
 
             fun Regex.index(name: String): Int {
                 return this.find(name)!!.groupValues[1].toInt()
@@ -108,15 +119,39 @@ internal class PowerProfile private constructor(
                     name == "cpu.active" -> {
                         cpuProfileBuilder.activeMa = value
                     }
-                    reClusterPowerRegex.matches(name) -> {
-                        val index = reClusterPowerRegex.index(name)
+                    reClusterPower.matches(name) -> {
+                        val index = reClusterPower.index(name)
                         cpuProfileBuilder.clusterOnPower[index] = value
                     }
                     name == "ambient.on" -> {
                         screenProfileBuilder.ambientMa = value
                     }
+                    name == "screen.on" -> {
+                        screenProfileBuilder.onMa = value
+                    }
+                    name == "screen.full" -> {
+                        screenProfileBuilder.fullMa = value
+                    }
+                    reScreenAmbient.matches(name) -> {
+                        val index = reScreenAmbient.index(name)
+                        screenProfileBuilder.screensAmbientMa[index] = value
+                    }
+                    reScreenOn.matches(name) -> {
+                        val index = reScreenOn.index(name)
+                        screenProfileBuilder.screensOnMa[index] = value
+                    }
+                    reScreenFull.matches(name) -> {
+                        val index = reScreenFull.index(name)
+                        screenProfileBuilder.screensFullMa[index] = value
+                    }
                     name == "audio" -> {
                         audioProfileBuilder.onMa = value
+                    }
+                    name == "bluetooth.active" -> {
+                        bluetoothProfileBuilder.activeMa = value
+                    }
+                    name == "bluetooth.on" -> {
+                        bluetoothProfileBuilder.onMa = value
                     }
                     name == "bluetooth.controller.idle" -> {
                         bluetoothProfileBuilder.idleMa = value
@@ -136,6 +171,9 @@ internal class PowerProfile private constructor(
                     name == "gps.on" -> {
                         gpsProfileBuilder.onMa = value
                     }
+                    name == "radio.active" -> {
+                        modemProfileBuilder.activeMa = value
+                    }
                     name == "modem.controller.sleep" -> {
                         modemProfileBuilder.sleepMa = value
                     }
@@ -148,14 +186,17 @@ internal class PowerProfile private constructor(
                     name == "radio.scanning" -> {
                         modemProfileBuilder.scanningMa = value
                     }
-                    name == "screen.on" -> {
-                        screenProfileBuilder.onMa = value
-                    }
-                    name == "screen.full" -> {
-                        screenProfileBuilder.fullMa = value
-                    }
                     name == "video" -> {
                         videoProfileBuilder.onMa = value
+                    }
+                    name == "wifi.on" -> {
+                        wifiProfileBuilder.onMa = value
+                    }
+                    name == "wifi.active" -> {
+                        wifiProfileBuilder.activeMa = value
+                    }
+                    name == "wifi.scan" -> {
+                        wifiProfileBuilder.scanMa = value
                     }
                     name == "wifi.controller.idle" -> {
                         wifiProfileBuilder.idleMa = value
@@ -165,6 +206,9 @@ internal class PowerProfile private constructor(
                     }
                     name == "wifi.controller.tx" -> {
                         wifiProfileBuilder.txMa = value
+                    }
+                    name == "battery.capacity" -> {
+                        batteryCapacity = value.toInt()
                     }
                     else -> {
                         tPowerLog.w(TAG, "Unknown: $name -> $value")
@@ -180,12 +224,12 @@ internal class PowerProfile private constructor(
                             cpuProfileBuilder.coreCount.add(i.toInt())
                         }
                     }
-                    reCoreSpeedsRegex.matches(name) -> {
-                        val index = reCoreSpeedsRegex.index(name)
+                    reCoreSpeeds.matches(name) -> {
+                        val index = reCoreSpeeds.index(name)
                         cpuProfileBuilder.coreSpeeds[index] = value.map { it.toInt() }
                     }
-                    reCorePowerRegex.matches(name) -> {
-                        val index = reCorePowerRegex.index(name)
+                    reCorePower.matches(name) -> {
+                        val index = reCorePower.index(name)
                         cpuProfileBuilder.corePower[index] = value
                     }
                     name == "gps.signalqualitybased" -> {
@@ -195,6 +239,20 @@ internal class PowerProfile private constructor(
                     name == "modem.controller.tx" -> {
                         modemProfileBuilder.txMa.clear()
                         modemProfileBuilder.txMa.addAll(value)
+                    }
+                    name == "radio.on" -> {
+                        modemProfileBuilder.onMa = value
+                    }
+                    name == "cpu.active" -> {
+                        cpuProfileBuilder.clusterMa = value
+                    }
+                    reCpuClusterSpeed.matches(name) -> {
+                        val index = reCpuClusterSpeed.index(name)
+                        cpuProfileBuilder.clusterSpeeds[index] = value.map { it.toInt() }
+                    }
+                    reCpuClusterActive.matches(name) -> {
+                        val index = reCpuClusterActive.index(name)
+                        cpuProfileBuilder.clusterActiveMa[index] = value
                     }
                     else -> {
                         tPowerLog.w(TAG, "Unknown: $name -> $value")
@@ -307,7 +365,8 @@ internal class PowerProfile private constructor(
                 gpsProfile = gpsProfileBuilder.build(),
                 modemProfile = modemProfileBuilder.build(),
                 videoProfile = videoProfileBuilder.build(),
-                wifiProfile = wifiProfileBuilder.build()
+                wifiProfile = wifiProfileBuilder.build(),
+                batteryCapacity = batteryCapacity
             )
         }
     }

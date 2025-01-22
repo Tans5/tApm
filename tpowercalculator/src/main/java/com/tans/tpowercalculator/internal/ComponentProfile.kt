@@ -1,13 +1,25 @@
 package com.tans.tpowercalculator.internal
 
-sealed class ComponentProfile {
+internal sealed class ComponentProfile {
 
+    /**
+     * CPU Power Equation (assume two clusters):
+     * Total power = POWER_CPU_SUSPEND  (always added)
+     *               + POWER_CPU_IDLE   (skip this and below if in power collapse mode)
+     *               + POWER_CPU_ACTIVE (skip this and below if CPU is not running, but a wakelock
+     *                                   is held)
+     *               + cluster_power.cluster0 + cluster_power.cluster1 (skip cluster not running)
+     *               + core_power.cluster0 * num running cores in cluster 0
+     *               + core_power.cluster1 * num running cores in cluster 1
+     */
     data class CpuProfile(
         val suspendMa: Float,
         val idleMa: Float,
         val activeMa: Float,
         val cluster: List<Cluster>,
-        val coreCount: Int
+        val coreCount: Int,
+        // cpu.active,
+        val activeMaList: List<Float>
     ) : ComponentProfile() {
 
         companion object {
@@ -33,13 +45,17 @@ sealed class ComponentProfile {
                 val coreSpeeds: MutableMap<Int, List<Int>> = mutableMapOf()
                 val corePower: MutableMap<Int, List<Float>> = mutableMapOf()
 
+                var clusterMa: List<Float> = emptyList()
+                val clusterSpeeds: MutableMap<Int, List<Int>> = mutableMapOf()
+                val clusterActiveMa: MutableMap<Int, List<Float>> = mutableMapOf()
+
                 fun build(): CpuProfile {
                     val clusters = mutableListOf<Cluster>()
                     var clusterCoreIndexStart = 0
                     for ((clusterIndex, clusterCoreCount) in coreCount.withIndex()) {
-                        val clusterPower = clusterOnPower[clusterIndex] ?: 0.0f
-                        val speeds = coreSpeeds[clusterIndex]
-                        val power = corePower[clusterIndex]
+                        val clusterPower = clusterOnPower[clusterIndex] ?: (clusterMa.getOrNull(clusterIndex) ?: 0.0f)
+                        val speeds = coreSpeeds[clusterIndex] ?: clusterSpeeds[clusterIndex]
+                        val power = corePower[clusterIndex] ?: clusterActiveMa[clusterIndex]
                         if (speeds != null && power != null && speeds.size != power.size) {
                             error("Wrong Cpu speeds count: ${speeds.size}, power count: ${power.size}")
                         }
@@ -71,7 +87,8 @@ sealed class ComponentProfile {
                         idleMa = idleMa,
                         activeMa = activeMa,
                         cluster = clusters,
-                        coreCount = clusters.sumOf { it.coreCount }
+                        coreCount = clusters.sumOf { it.coreCount },
+                        activeMaList = clusterMa
                     )
 
                 }
@@ -82,7 +99,10 @@ sealed class ComponentProfile {
     data class ScreenProfile(
         val ambientMa: Float,
         val onMa: Float,
-        val fullMa: Float
+        val fullMa: Float,
+        val screensAmbientMa: Map<Int, Float>,
+        val screensOnMa: Map<Int, Float>,
+        val screensFullMa: Map<Int, Float>,
     ) : ComponentProfile() {
 
         companion object {
@@ -90,12 +110,18 @@ sealed class ComponentProfile {
                 var ambientMa: Float = 0.0f
                 var onMa: Float = 0.0f
                 var fullMa: Float = 0.0f
+                val screensAmbientMa: MutableMap<Int, Float> = mutableMapOf()
+                val screensOnMa: MutableMap<Int, Float> = mutableMapOf()
+                val screensFullMa: MutableMap<Int, Float> = mutableMapOf()
 
                 fun build(): ScreenProfile {
                     return ScreenProfile(
                         ambientMa = ambientMa,
                         onMa = onMa,
-                        fullMa = fullMa
+                        fullMa = fullMa,
+                        screensAmbientMa = screensAmbientMa,
+                        screensOnMa = screensOnMa,
+                        screensFullMa = screensFullMa
                     )
                 }
             }
@@ -121,6 +147,8 @@ sealed class ComponentProfile {
     }
 
     data class BluetoothProfile(
+        val onMa: Float,
+        val activeMa: Float,
         val idleMa: Float,
         val rxMa: Float,
         val txMa: Float
@@ -129,12 +157,16 @@ sealed class ComponentProfile {
         companion object {
 
             class Builder {
+                var onMa: Float = 0.0f
+                var activeMa: Float = 0.0f
                 var idleMa: Float = 0.0f
                 var rxMa: Float = 0.0f
                 var txMa: Float = 0.0f
 
                 fun build(): BluetoothProfile {
                     return BluetoothProfile(
+                        onMa = onMa,
+                        activeMa = activeMa,
                         idleMa = idleMa,
                         rxMa = rxMa,
                         txMa = txMa
@@ -202,6 +234,8 @@ sealed class ComponentProfile {
     }
 
     data class ModemProfile(
+        val onMa: List<Float>,
+        val activeMa: Float,
         val sleepMa: Float,
         val idleMa: Float,
         val rxMa: Float,
@@ -212,6 +246,8 @@ sealed class ComponentProfile {
         companion object {
 
             class Builder {
+                var onMa: List<Float> = emptyList()
+                var activeMa: Float = 0.0f
                 var sleepMa: Float = 0.0f
                 var idleMa: Float = 0.0f
                 var rxMa: Float = 0.0f
@@ -220,6 +256,8 @@ sealed class ComponentProfile {
 
                 fun build(): ModemProfile {
                     return ModemProfile(
+                        onMa = onMa,
+                        activeMa = activeMa,
                         sleepMa = sleepMa,
                         idleMa = idleMa,
                         rxMa = rxMa,
@@ -250,6 +288,9 @@ sealed class ComponentProfile {
     }
 
     data class WifiProfile(
+        val onMa: Float,
+        val activeMa: Float,
+        val scanMa: Float,
         val idleMa: Float,
         val rxMa: Float,
         val txMa: Float
@@ -258,12 +299,18 @@ sealed class ComponentProfile {
         companion object {
 
             class Builder {
+                var onMa: Float = 0.0f
+                var activeMa: Float = 0.0f
+                var scanMa: Float = 0.0f
                 var idleMa: Float = 0.0f
                 var rxMa: Float = 0.0f
                 var txMa: Float = 0.0f
 
                 fun build(): WifiProfile {
                     return WifiProfile(
+                        onMa = onMa,
+                        activeMa = activeMa,
+                        scanMa = scanMa,
                         idleMa = idleMa,
                         rxMa = rxMa,
                         txMa = txMa

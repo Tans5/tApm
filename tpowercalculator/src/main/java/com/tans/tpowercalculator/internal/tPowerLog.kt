@@ -2,7 +2,7 @@ package com.tans.tpowercalculator.internal
 
 import android.util.Log
 
-object tPowerLog {
+internal object tPowerLog {
 
     fun d(tag: String, msg: String) {
         Log.d(tag, msg)
