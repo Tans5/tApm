@@ -17,17 +17,25 @@ object tPowerCalculator {
     fun init(application: Application, callback: SimpleCallback? = null) {
         if (this.application.compareAndSet(null, application)) {
             Executors.bgExecutors.execute {
-                tPowerLog.d(TAG, "Do init.")
-                runCatching {
-                    val powerProfile = PowerProfile.parsePowerProfile(application)
-                    val cpuStateSnapshotCapture = CpuStateSnapshotCapture(powerProfile)
-                }.onSuccess {
+                fun success() {
                     tPowerLog.d(TAG, "Init success!!")
                     isInitSuccess.set(true)
                     callback?.onSuccess()
-                }.onFailure {
-                    tPowerLog.e(TAG, "Init fail.", it)
-                    callback?.onFail(it.message ?: "", it)
+                }
+
+                fun fail(msg: String) {
+                    tPowerLog.e(TAG, msg)
+                    isInitSuccess.set(false)
+                    callback?.onFail(msg)
+                }
+
+                tPowerLog.d(TAG, "Do init.")
+                val powerProfile = PowerProfile.parsePowerProfile(application)
+                val cpuStateSnapshotCapture = CpuStateSnapshotCapture(powerProfile)
+                if (cpuStateSnapshotCapture.isInitSuccess) {
+                    success()
+                } else {
+                    fail("CpuStateSnapshotCapture init fail.")
                 }
             }
         } else {

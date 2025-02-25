@@ -32,7 +32,7 @@ internal sealed class ComponentProfile {
             )
 
             data class Frequency(
-                val speedHz: Int,
+                val speedHz: Long,
                 val onMa: Float
             )
 
@@ -42,11 +42,11 @@ internal sealed class ComponentProfile {
                 var activeMa: Float = 0.0f
                 val coreCount: MutableList<Int> = mutableListOf()
                 val clusterOnPower: MutableMap<Int, Float> = mutableMapOf()
-                val coreSpeeds: MutableMap<Int, List<Int>> = mutableMapOf()
+                val coreSpeeds: MutableMap<Int, List<Long>> = mutableMapOf()
                 val corePower: MutableMap<Int, List<Float>> = mutableMapOf()
 
                 var clusterMa: List<Float> = emptyList()
-                val clusterSpeeds: MutableMap<Int, List<Int>> = mutableMapOf()
+                val clusterSpeeds: MutableMap<Int, List<Long>> = mutableMapOf()
                 val clusterActiveMa: MutableMap<Int, List<Float>> = mutableMapOf()
 
                 fun build(): CpuProfile {

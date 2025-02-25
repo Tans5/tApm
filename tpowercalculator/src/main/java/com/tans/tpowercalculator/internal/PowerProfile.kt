@@ -226,7 +226,7 @@ internal class PowerProfile private constructor(
                     }
                     reCoreSpeeds.matches(name) -> {
                         val index = reCoreSpeeds.index(name)
-                        cpuProfileBuilder.coreSpeeds[index] = value.map { it.toInt() }
+                        cpuProfileBuilder.coreSpeeds[index] = value.map { it.toLong() }
                     }
                     reCorePower.matches(name) -> {
                         val index = reCorePower.index(name)
@@ -248,7 +248,7 @@ internal class PowerProfile private constructor(
                     }
                     reCpuClusterSpeed.matches(name) -> {
                         val index = reCpuClusterSpeed.index(name)
-                        cpuProfileBuilder.clusterSpeeds[index] = value.map { it.toInt() }
+                        cpuProfileBuilder.clusterSpeeds[index] = value.map { it.toLong() }
                     }
                     reCpuClusterActive.matches(name) -> {
                         val index = reCpuClusterActive.index(name)
