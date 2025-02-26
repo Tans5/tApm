@@ -75,13 +75,13 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             previous = state2
         }
         val durationInMillis = next.createTime - previous.createTime
-        val durationInJiffies = durationInMillis / oneJiffyInMillis
+        // val durationInJiffies = durationInMillis / oneJiffyInMillis
 
         // All processes cpu cores usages.
         val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
         for (ns in next.coreStates) {
             val ps = previous.coreStates[ns.coreIndex]
-            val cpuIdleTimeInJiffies = (ns.cpuIdleTime - ps.cpuIdleTime).coerceIn(0, durationInJiffies)
+            val cpuIdleTimeInJiffies = ns.cpuIdleTime - ps.cpuIdleTime
             var cpuWorkTimeInJiffies = 0L
             var allCpuTimeInJiffies = cpuIdleTimeInJiffies
             for ((index, nSpeedAndTime) in ns.cpuSpeedToTime.withIndex()) {
@@ -119,7 +119,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             var cpuWorkTimeInJiffies = 0L
             for ((speed, nTimeInJiffies) in ns.value) {
                 val pTimeTimeInJiffies = ps?.find { it.first == speed }?.second ?: 0L
-                cpuWorkTimeInJiffies += ((pTimeTimeInJiffies - nTimeInJiffies).toDouble() * speed.toDouble() / core.speed.maxSpeedInHz.toDouble()).toLong()
+                cpuWorkTimeInJiffies += ((nTimeInJiffies - pTimeTimeInJiffies).toDouble() * speed.toDouble() / core.speed.maxSpeedInHz.toDouble()).toLong()
             }
             val usage = cpuWorkTimeInJiffies.toDouble() / core.allCpuTimeInJiffies.toDouble()
             currentProcessCpuCoresUsage.add(
@@ -136,7 +136,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             currentProcessAvgCpuUsageDen += usage.refCore.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble()
             currentProcessAvgCpuUsageNum += usage.refCore.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
         }
-        val currentProcessAvgCpuUsage = currentProcessCpuCoresUsage.sumOf { it.cpuUsage } / currentProcessCpuCoresUsage.size
+        val currentProcessAvgCpuUsage = currentProcessAvgCpuUsageNum / currentProcessAvgCpuUsageDen
         return CpuUsage(
             durationInMillis = durationInMillis,
             cpuCoresUsage = cpuCoreUsages,

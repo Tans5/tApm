@@ -31,13 +31,13 @@ internal class CpuUsageMonitor(
                     sendNextTimeCheckTask()
                     return
                 }
-                val idleDurationInMillis = (cc.cpuIdleTime - lc.cpuIdleTime) * CpuStateSnapshotCapture.oneJiffyInMillis
-                if (idleDurationInMillis > (stateDurationInMillis + IDLE_TIME_MIN_DEVIATION)) {
-                    tPowerLog.e(TAG, "Skip cpu usage calculate, cpuCoreIndex=${cc.coreIndex}, idleDuration=${idleDurationInMillis}, stateDuration=${stateDurationInMillis}")
-                    lastCpuStateSnapshot.set(currentCpuState)
-                    sendNextTimeCheckTask()
-                    return
-                }
+//                val idleDurationInMillis = (cc.cpuIdleTime - lc.cpuIdleTime) * CpuStateSnapshotCapture.oneJiffyInMillis
+//                if (idleDurationInMillis > (stateDurationInMillis + IDLE_TIME_MIN_DEVIATION)) {
+//                    tPowerLog.e(TAG, "Skip cpu usage calculate, cpuCoreIndex=${cc.coreIndex}, idleDuration=${idleDurationInMillis}, stateDuration=${stateDurationInMillis}")
+//                    lastCpuStateSnapshot.set(currentCpuState)
+//                    sendNextTimeCheckTask()
+//                    return
+//                }
             }
             val cpuUsage = cpuStateSnapshotCapture.calculateCpuUsage(lastCpuState, currentCpuState)
             tPowerLog.d(TAG, "------------------------------------------")
