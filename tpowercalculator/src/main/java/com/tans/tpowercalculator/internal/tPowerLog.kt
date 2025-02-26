@@ -2,6 +2,7 @@ package com.tans.tpowercalculator.internal
 
 import android.util.Log
 
+@Suppress("ClassName")
 internal object tPowerLog {
 
     fun d(tag: String, msg: String) {

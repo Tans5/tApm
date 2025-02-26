@@ -52,7 +52,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         }
     }
 
-    fun computeCpuUsage(state1: CpuStateSnapshot, state2: CpuStateSnapshot): CpuUsage {
+    fun calculateCpuUsage(state1: CpuStateSnapshot, state2: CpuStateSnapshot): CpuUsage {
         val previous: CpuStateSnapshot
         val next: CpuStateSnapshot
         if (state1.createTime < state2.createTime) {
@@ -91,8 +91,8 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         }
         val avgCpuUsage = cpuCoreUsages.sumOf { it.cpuUsage } / cpuCoreUsages.size.toDouble()
 
-        // Current progress cpu cores usage.
-        val currentProgressCpuCoresUsage = mutableListOf<ProgressSingleCpuCoreUsage>()
+        // Current process cpu cores usage.
+        val currentProcessCpuCoresUsage = mutableListOf<ProgressSingleCpuCoreUsage>()
         for (ns in next.currentProcessCpuSpeedToTime) {
             val coreIndex = ns.key
             val ps = previous.currentProcessCpuSpeedToTime[coreIndex]
@@ -103,7 +103,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
                 cpuWorkTimeInJiffies += ((pTimeTimeInJiffies - nTimeInJiffies).toDouble() * speed.toDouble() / core.speed.maxSpeedInHz.toDouble()).toLong()
             }
             val usage = cpuWorkTimeInJiffies.toDouble() / core.allCpuTimeInJiffies.toDouble()
-            currentProgressCpuCoresUsage.add(
+            currentProcessCpuCoresUsage.add(
                 ProgressSingleCpuCoreUsage(
                     refCore = core,
                     cpuWorkTimeInJiffies = cpuWorkTimeInJiffies,
@@ -111,13 +111,13 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
                 )
             )
         }
-        val currentProgressAvgCpuUsage = currentProgressCpuCoresUsage.sumOf { it.cpuUsage } / currentProgressCpuCoresUsage.size
+        val currentProcessAvgCpuUsage = currentProcessCpuCoresUsage.sumOf { it.cpuUsage } / currentProcessCpuCoresUsage.size
         return CpuUsage(
             durationInMillis = durationInMillis,
             cpuCoresUsage = cpuCoreUsages,
             avgCpuUsage = avgCpuUsage,
-            currentProgressCpuCoresUsage = currentProgressCpuCoresUsage,
-            currentProgressAvgCpuUsage = currentProgressAvgCpuUsage
+            currentProcessCpuCoresUsage = currentProcessCpuCoresUsage,
+            currentProcessAvgCpuUsage = currentProcessAvgCpuUsage
         )
     }
 
@@ -204,8 +204,8 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val durationInMillis: Long,
             val cpuCoresUsage: List<SingleCpuCoreUsage>,
             val avgCpuUsage: Double,
-            val currentProgressCpuCoresUsage: List<ProgressSingleCpuCoreUsage>,
-            val currentProgressAvgCpuUsage: Double
+            val currentProcessCpuCoresUsage: List<ProgressSingleCpuCoreUsage>,
+            val currentProcessAvgCpuUsage: Double
         )
 
         val oneJiffyInMillis: Long by lazy {

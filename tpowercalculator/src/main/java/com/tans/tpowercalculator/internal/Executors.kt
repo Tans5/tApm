@@ -1,14 +1,29 @@
 package com.tans.tpowercalculator.internal
 
-import java.util.concurrent.Executors
+import android.os.Handler
+import android.os.HandlerThread
+import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal object Executors {
 
-    val bgExecutors by lazy {
-        Executors.newSingleThreadExecutor { r ->
-            val t = Thread(r, "tPower_BgThread")
-            t
-        }!!
+    val bgHandlerThread: HandlerThread by lazy {
+        val isPrepared = AtomicBoolean(false)
+        val t = object : HandlerThread("tPower_BgThread", Thread.NORM_PRIORITY) {
+            override fun onLooperPrepared() {
+                isPrepared.set(true)
+            }
+        }.apply { this.start() }
+        while (!isPrepared.get()) {}
+        t
+    }
+
+    val bgHandler: Handler by lazy {
+        Handler(bgHandlerThread.looper)
+    }
+
+    val bgExecutors: Executor by lazy {
+        Executor { command -> bgHandler.post(command) }
     }
 
 }
