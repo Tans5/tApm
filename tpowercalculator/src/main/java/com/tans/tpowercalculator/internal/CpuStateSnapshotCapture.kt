@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
 import java.io.File
+
 internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
     val isInitSuccess: Boolean
@@ -23,27 +24,100 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         }
     }
 
-    fun createCpuStateSnapshot(): CpuStateSnapshot {
-        val cpuCoreCount = powerProfile.cpuProfile.coreCount
-        val currentProcessCpuSpeedToTime = readCurrentProcessCpuCoreTime()
-        val coreStates = mutableListOf<SingleCoreStateSnapshot>()
-        repeat(cpuCoreCount) { coreIndex ->
-            val cpuSpeed = readCpuCoreSpeed(coreIndex)
-            val cpuSpeedToTime = readCpuCoreTime(coreIndex)
-            val cpuIdleTime = readCpuCoreIdleTime(coreIndex)
-            coreStates.add(
-                SingleCoreStateSnapshot(
-                    coreIndex = coreIndex,
-                    cpuSpeed = cpuSpeed,
-                    cpuSpeedToTime = cpuSpeedToTime,
-                    cpuIdleTime = cpuIdleTime
+    fun createCpuStateSnapshot(): CpuStateSnapshot? {
+        return if (isInitSuccess) {
+            val cpuCoreCount = powerProfile.cpuProfile.coreCount
+            val currentProcessCpuSpeedToTime = readCurrentProcessCpuCoreTime()
+            val coreStates = mutableListOf<SingleCoreStateSnapshot>()
+            repeat(cpuCoreCount) { coreIndex ->
+                val cpuSpeed = readCpuCoreSpeed(coreIndex)
+                val cpuSpeedToTime = readCpuCoreTime(coreIndex)
+                val cpuIdleTime = readCpuCoreIdleTime(coreIndex)
+                coreStates.add(
+                    SingleCoreStateSnapshot(
+                        coreIndex = coreIndex,
+                        cpuSpeed = cpuSpeed,
+                        cpuSpeedToTime = cpuSpeedToTime,
+                        cpuIdleTime = cpuIdleTime
+                    )
+                )
+            }
+            CpuStateSnapshot(
+                createTime = SystemClock.uptimeMillis(),
+                coreStates = coreStates,
+                currentProcessCpuSpeedToTime = currentProcessCpuSpeedToTime
+            )
+        } else {
+            null
+        }
+    }
+
+    fun computeCpuUsage(state1: CpuStateSnapshot, state2: CpuStateSnapshot): CpuUsage {
+        val previous: CpuStateSnapshot
+        val next: CpuStateSnapshot
+        if (state1.createTime < state2.createTime) {
+            previous = state1
+            next = state2
+        } else {
+            next = state1
+            previous = state2
+        }
+        val durationInMillis = next.createTime - previous.createTime
+
+        // All progress cpu cores usages.
+        val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
+        for (ns in next.coreStates) {
+            val ps = previous.coreStates[ns.coreIndex]
+            val cpuIdleTimeInJiffies = ns.cpuIdleTime - ps.cpuIdleTime
+            var cpuWorkTimeInJiffies = 0L
+            var allCpuTimeInJiffies = cpuIdleTimeInJiffies
+            for ((index, nSpeedAndTime) in ns.cpuSpeedToTime.withIndex()) {
+                val (speed, nTimeInJiffies) = nSpeedAndTime
+                val (_, pTimeInJiffies) = ps.cpuSpeedToTime[index]
+                allCpuTimeInJiffies += (nTimeInJiffies - pTimeInJiffies)
+                cpuWorkTimeInJiffies += ((nTimeInJiffies - pTimeInJiffies).toDouble() * speed.toDouble() / ps.cpuSpeed.maxSpeedInHz.toDouble()).toLong()
+            }
+            val cpuUsage = cpuWorkTimeInJiffies.toDouble() / allCpuTimeInJiffies.toDouble()
+            cpuCoreUsages.add(
+                SingleCpuCoreUsage(
+                    coreIndex = ns.coreIndex,
+                    speed = ns.cpuSpeed,
+                    cpuUsage = cpuUsage,
+                    allCpuTimeInJiffies = allCpuTimeInJiffies,
+                    cpuIdleTimeInJiffies = cpuIdleTimeInJiffies,
+                    cpuWorkTimeInJiffies = cpuWorkTimeInJiffies
                 )
             )
         }
-        return CpuStateSnapshot(
-            createTime = SystemClock.uptimeMillis(),
-            coreStates = coreStates,
-            currentProcessCpuSpeedToTime = currentProcessCpuSpeedToTime
+        val avgCpuUsage = cpuCoreUsages.sumOf { it.cpuUsage } / cpuCoreUsages.size.toDouble()
+
+        // Current progress cpu cores usage.
+        val currentProgressCpuCoresUsage = mutableListOf<ProgressSingleCpuCoreUsage>()
+        for (ns in next.currentProcessCpuSpeedToTime) {
+            val coreIndex = ns.key
+            val ps = previous.currentProcessCpuSpeedToTime[coreIndex]
+            val core = cpuCoreUsages.find { it.coreIndex == coreIndex }!!
+            var cpuWorkTimeInJiffies = 0L
+            for ((speed, nTimeInJiffies) in ns.value) {
+                val pTimeTimeInJiffies = ps?.find { it.first == speed }?.second ?: 0L
+                cpuWorkTimeInJiffies += ((pTimeTimeInJiffies - nTimeInJiffies).toDouble() * speed.toDouble() / core.speed.maxSpeedInHz.toDouble()).toLong()
+            }
+            val usage = cpuWorkTimeInJiffies.toDouble() / core.allCpuTimeInJiffies.toDouble()
+            currentProgressCpuCoresUsage.add(
+                ProgressSingleCpuCoreUsage(
+                    refCore = core,
+                    cpuWorkTimeInJiffies = cpuWorkTimeInJiffies,
+                    cpuUsage = usage
+                )
+            )
+        }
+        val currentProgressAvgCpuUsage = currentProgressCpuCoresUsage.sumOf { it.cpuUsage } / currentProgressCpuCoresUsage.size
+        return CpuUsage(
+            durationInMillis = durationInMillis,
+            cpuCoresUsage = cpuCoreUsages,
+            avgCpuUsage = avgCpuUsage,
+            currentProgressCpuCoresUsage = currentProgressCpuCoresUsage,
+            currentProgressAvgCpuUsage = currentProgressAvgCpuUsage
         )
     }
 
@@ -109,6 +183,29 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val createTime: Long,
             val coreStates: List<SingleCoreStateSnapshot>,
             val currentProcessCpuSpeedToTime: Map<Int, List<Pair<Long, Long>>>
+        )
+
+        data class SingleCpuCoreUsage(
+            val coreIndex: Int,
+            val speed: CpuSpeed,
+            val cpuUsage: Double,
+            val allCpuTimeInJiffies: Long,
+            val cpuIdleTimeInJiffies: Long,
+            val cpuWorkTimeInJiffies: Long,
+        )
+
+        data class ProgressSingleCpuCoreUsage(
+            val refCore: SingleCpuCoreUsage,
+            val cpuWorkTimeInJiffies: Long,
+            val cpuUsage: Double
+        )
+
+        data class CpuUsage(
+            val durationInMillis: Long,
+            val cpuCoresUsage: List<SingleCpuCoreUsage>,
+            val avgCpuUsage: Double,
+            val currentProgressCpuCoresUsage: List<ProgressSingleCpuCoreUsage>,
+            val currentProgressAvgCpuUsage: Double
         )
 
         val oneJiffyInMillis: Long by lazy {
