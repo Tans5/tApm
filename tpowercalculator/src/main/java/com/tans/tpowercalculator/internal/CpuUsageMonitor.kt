@@ -21,10 +21,10 @@ internal class CpuUsageMonitor(
                 sendNextTimeCheckTask()
                 return
             }
-            val stateDurationInMillis = currentCpuState!!.createTime - lastCpuState.createTime
+//            val stateDurationInMillis = currentCpuState!!.createTime - lastCpuState.createTime
 
             // Check if cpu idle time.
-            for ((index, cc) in currentCpuState.coreStates.withIndex()) {
+            for ((index, cc) in currentCpuState!!.coreStates.withIndex()) {
                 val lc = lastCpuState.coreStates[index]
                 if (lc.cpuIdleTime == cc.cpuIdleTime && cc.cpuSpeed.currentSpeedInHz < cc.cpuSpeed.maxSpeedInHz) {
                     tPowerLog.e(TAG, "Skip cpu usage calculate, cpuCoreIndex=${cc.coreIndex}, idle time do not update, and currentCpuSpeed=${cc.cpuSpeed.currentSpeedInHz.toHumanReadableCpuSpeed()} maxCpuSpeed=${cc.cpuSpeed.maxSpeedInHz.toHumanReadableCpuSpeed()}")
@@ -68,7 +68,7 @@ internal class CpuUsageMonitor(
         // 2s
         private const val CPU_USAGE_CHECK_INTERNAL = 2000L
 
-        private const val IDLE_TIME_MIN_DEVIATION = 100L
+//        private const val IDLE_TIME_MIN_DEVIATION = 100L
 
         private const val CPU_USAGE_CHECK_MSG = 0
 

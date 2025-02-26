@@ -24,18 +24,6 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         }
     }
 
-    private val maxCpuSpeed: Long by lazy {
-        var maxSpeed = 0L
-        for (c in powerProfile.cpuProfile.cluster) {
-            for (f in c.frequencies) {
-                if (f.speedHz > maxSpeed) {
-                    maxSpeed = f.speedHz
-                }
-            }
-        }
-        maxSpeed
-    }
-
     fun createCpuStateSnapshot(): CpuStateSnapshot? {
         return if (isInitSuccess) {
             val cpuCoreCount = powerProfile.cpuProfile.coreCount
@@ -75,11 +63,14 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             previous = state2
         }
         val durationInMillis = next.createTime - previous.createTime
-        // val durationInJiffies = durationInMillis / oneJiffyInMillis
 
         // All processes cpu cores usages.
         val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
+        var maxCpuSpeed = 0L
         for (ns in next.coreStates) {
+            if (ns.cpuSpeed.maxSpeedInHz > maxCpuSpeed) {
+                maxCpuSpeed = ns.cpuSpeed.maxSpeedInHz
+            }
             val ps = previous.coreStates[ns.coreIndex]
             val cpuIdleTimeInJiffies = ns.cpuIdleTime - ps.cpuIdleTime
             var cpuWorkTimeInJiffies = 0L
@@ -149,36 +140,12 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
     private fun checkCpuSpeedAndTime() {
         val cpuProfile = powerProfile.cpuProfile
         repeat(cpuProfile.coreCount) { coreIndex ->
-            val speedAndTime = readCpuCoreTime(coreIndex)
-            val cluster = cpuProfile.cluster.find { coreIndex in it.coreIndexRange } ?: error("Didn't find Cluster of coreIndex=$coreIndex")
-            if (cluster.frequencies.size != speedAndTime.size) {
-                error("SpeedSize is ${cluster.frequencies.size}, but found ${speedAndTime.size}")
-            }
-            for ((speed, _) in speedAndTime) {
-                val freq = cluster.frequencies.find { it.speedHz == speed }
-                if (freq == null) {
-                    error("Don't find speed: $speed")
-                }
-            }
+            readCpuCoreTime(coreIndex)
         }
     }
 
     private fun checkProcessCpuSpeedAndTime() {
-        val processCpuTime = readCurrentProcessCpuCoreTime()
-        val cpuProfile = powerProfile.cpuProfile
-        val maxCpuIndex = cpuProfile.coreCount - 1
-        for ((cpuIndex, speedAndTime) in processCpuTime) {
-            if (cpuIndex < 0 || cpuIndex > maxCpuIndex) {
-                error("Wrong cpu index: $cpuIndex, maxCpuIndex=$maxCpuIndex")
-            }
-            val cluster = cpuProfile.cluster.find { cpuIndex in it.coreIndexRange } ?: error("Didn't find Cluster of coreIndex=$cpuIndex")
-            for ((speed, _) in speedAndTime) {
-                val freq = cluster.frequencies.find { it.speedHz == speed }
-                if (freq == null) {
-                    error("Don't find speed: $speed")
-                }
-            }
-        }
+        readCurrentProcessCpuCoreTime()
     }
 
     private fun checkCpuCoreIdleTime() {
