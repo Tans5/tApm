@@ -32,7 +32,7 @@ internal class CpuUsageMonitor(
                     return
                 }
                 val idleDurationInMillis = (cc.cpuIdleTime - lc.cpuIdleTime) * CpuStateSnapshotCapture.oneJiffyInMillis
-                if (idleDurationInMillis > stateDurationInMillis) {
+                if (idleDurationInMillis > (stateDurationInMillis + IDLE_TIME_MIN_DEVIATION)) {
                     tPowerLog.e(TAG, "Skip cpu usage calculate, cpuCoreIndex=${cc.coreIndex}, idleDuration=${idleDurationInMillis}, stateDuration=${stateDurationInMillis}")
                     lastCpuStateSnapshot.set(currentCpuState)
                     sendNextTimeCheckTask()
@@ -65,8 +65,10 @@ internal class CpuUsageMonitor(
 
     companion object {
         private const val TAG = "CpuUsageMonitor"
-        // 1.5s
-        private const val CPU_USAGE_CHECK_INTERNAL = 1500L
+        // 2s
+        private const val CPU_USAGE_CHECK_INTERNAL = 2000L
+
+        private const val IDLE_TIME_MIN_DEVIATION = 100L
 
         private const val CPU_USAGE_CHECK_MSG = 0
 
@@ -75,7 +77,7 @@ internal class CpuUsageMonitor(
         }
 
         fun Double.toHumanReadableCpuUsage(): String {
-            return String.format(Locale.US, "%.1f", this * 100.0)
+            return String.format(Locale.US, "%.1f", this * 100.0) + " %"
         }
     }
 }
