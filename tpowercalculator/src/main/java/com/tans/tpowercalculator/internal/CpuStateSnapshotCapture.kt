@@ -209,7 +209,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         )
 
         val oneJiffyInMillis: Long by lazy {
-            Os.sysconf(OsConstants._SC_CLK_TCK)
+            (1000.0 / Os.sysconf(OsConstants._SC_CLK_TCK).toDouble()).toLong()
         }
 
         /**
