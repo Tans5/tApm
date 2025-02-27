@@ -10,12 +10,17 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
     val isInitSuccess: Boolean
 
+    private val cpuSpeedSpecs: List<CpuSpec> by lazy {
+        readCpuCoresSpec(powerProfile.cpuProfile.coreCount)
+    }
+
     init {
         isInitSuccess = try {
             checkCpuSpeedAndTime()
             checkProcessCpuSpeedAndTime()
             checkCpuCoreIdleTime()
             checkCpuCoreSpeed()
+            cpuSpeedSpecs
             tPowerLog.d(TAG, "Init CpuStateSnapshotCapture success.")
             true
         } catch (e: Throwable) {
@@ -36,7 +41,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
                 coreStates.add(
                     SingleCoreStateSnapshot(
                         coreIndex = coreIndex,
-                        cpuSpeed = cpuSpeed,
+                        currentCoreSpeedInKHz = cpuSpeed,
                         cpuSpeedToTime = cpuSpeedToTime,
                         cpuIdleTime = cpuIdleTime
                     )
@@ -66,11 +71,8 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
         // All processes cpu cores usages.
         val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
-        var maxCpuSpeed = 0L
         for (ns in next.coreStates) {
-            if (ns.cpuSpeed.maxSpeedInHz > maxCpuSpeed) {
-                maxCpuSpeed = ns.cpuSpeed.maxSpeedInHz
-            }
+            val coreSpec = cpuSpeedSpecs[ns.coreIndex]
             val ps = previous.coreStates[ns.coreIndex]
             val cpuIdleTimeInJiffies = ns.cpuIdleTime - ps.cpuIdleTime
             var cpuWorkTimeInJiffies = 0L
@@ -78,14 +80,16 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             for ((index, nSpeedAndTime) in ns.cpuSpeedToTime.withIndex()) {
                 val (speed, nTimeInJiffies) = nSpeedAndTime
                 val (_, pTimeInJiffies) = ps.cpuSpeedToTime[index]
-                allCpuTimeInJiffies += (nTimeInJiffies - pTimeInJiffies)
-                cpuWorkTimeInJiffies += ((nTimeInJiffies - pTimeInJiffies).toDouble() * speed.toDouble() / ps.cpuSpeed.maxSpeedInHz.toDouble()).toLong()
+                val diffInJiffies = nTimeInJiffies - pTimeInJiffies
+                allCpuTimeInJiffies += diffInJiffies
+                cpuWorkTimeInJiffies += (diffInJiffies.toDouble() * speed.toDouble() / coreSpec.maxSpeedInKHz.toDouble()).toLong()
             }
             val cpuUsage = cpuWorkTimeInJiffies.toDouble() / allCpuTimeInJiffies.toDouble()
             cpuCoreUsages.add(
                 SingleCpuCoreUsage(
                     coreIndex = ns.coreIndex,
-                    speed = ns.cpuSpeed,
+                    coreSpec = coreSpec,
+                    currentCoreSpeedInKHz = ns.currentCoreSpeedInKHz,
                     cpuUsage = cpuUsage,
                     allCpuTimeInJiffies = allCpuTimeInJiffies,
                     cpuIdleTimeInJiffies = cpuIdleTimeInJiffies,
@@ -93,11 +97,13 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
                 )
             )
         }
+        val maxCpuSpeed = cpuSpeedSpecs.maxBy { it.maxSpeedInKHz }.maxSpeedInKHz
         var avgCpuUsageNum = 0.0
         var avgCpuUsageDen = 0.0
         for (usage in cpuCoreUsages) {
-            avgCpuUsageDen += usage.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble()
-            avgCpuUsageNum += usage.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
+            val coreSpec = cpuSpeedSpecs[usage.coreIndex]
+            avgCpuUsageDen += coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble()
+            avgCpuUsageNum += coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
         }
         val avgCpuUsage = avgCpuUsageNum / avgCpuUsageDen
 
@@ -109,8 +115,9 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val core = cpuCoreUsages.find { it.coreIndex == coreIndex }!!
             var cpuWorkTimeInJiffies = 0L
             for ((speed, nTimeInJiffies) in ns.value) {
-                val pTimeTimeInJiffies = ps?.find { it.first == speed }?.second ?: 0L
-                cpuWorkTimeInJiffies += ((nTimeInJiffies - pTimeTimeInJiffies).toDouble() * speed.toDouble() / core.speed.maxSpeedInHz.toDouble()).toLong()
+                val pTimeInJiffies = ps?.find { it.first == speed }?.second ?: 0L
+                val diffInJiffies = nTimeInJiffies - pTimeInJiffies
+                cpuWorkTimeInJiffies += (diffInJiffies.toDouble() * speed.toDouble() / core.coreSpec.maxSpeedInKHz.toDouble()).toLong()
             }
             val usage = cpuWorkTimeInJiffies.toDouble() / core.allCpuTimeInJiffies.toDouble()
             currentProcessCpuCoresUsage.add(
@@ -124,8 +131,8 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         var currentProcessAvgCpuUsageNum = 0.0
         var currentProcessAvgCpuUsageDen = 0.0
         for (usage in currentProcessCpuCoresUsage) {
-            currentProcessAvgCpuUsageDen += usage.refCore.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble()
-            currentProcessAvgCpuUsageNum += usage.refCore.speed.maxSpeedInHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
+            currentProcessAvgCpuUsageDen += usage.refCore.coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble()
+            currentProcessAvgCpuUsageNum += usage.refCore.coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
         }
         val currentProcessAvgCpuUsage = currentProcessAvgCpuUsageNum / currentProcessAvgCpuUsageDen
         return CpuUsage(
@@ -166,7 +173,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
         data class SingleCoreStateSnapshot(
             val coreIndex: Int,
-            val cpuSpeed: CpuSpeed,
+            val currentCoreSpeedInKHz: Long,
             val cpuSpeedToTime: List<Pair<Long, Long>>,
             val cpuIdleTime: Long
         )
@@ -179,7 +186,8 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
         data class SingleCpuCoreUsage(
             val coreIndex: Int,
-            val speed: CpuSpeed,
+            val coreSpec: CpuSpec,
+            val currentCoreSpeedInKHz: Long,
             val cpuUsage: Double,
             val allCpuTimeInJiffies: Long,
             val cpuIdleTimeInJiffies: Long,
@@ -204,10 +212,9 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             Os.sysconf(OsConstants._SC_CLK_TCK)
         }
 
-        private fun readCpuCoreTimeSum(cpuCoreIndex: Int): Long {
-            return readCpuCoreTime(cpuCoreIndex).sumOf { it.second }
-        }
-
+        /**
+         * https://docs.kernel.org/cpu-freq/cpufreq-stats.html
+         */
         // first: Cpu speed, second: time in jiffies
         private fun readCpuCoreTime(cpuCoreIndex: Int): List<Pair<Long, Long>> {
             val f = File("/sys/devices/system/cpu/cpu${cpuCoreIndex}/cpufreq/stats/time_in_state")
@@ -255,6 +262,9 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             return result
         }
 
+        /**
+         * https://android.googlesource.com/kernel/common/+/a7827a2a60218b25f222b54f77ed38f57aebe08b/Documentation/cpuidle/sysfs.txt
+         */
         // read cpu idle time in microseconds.
         private fun readCpuCoreIdleTimeInMicroseconds(cpuCoreIndex: Int): Long {
             val baseDir = File("/sys/devices/system/cpu/cpu$cpuCoreIndex/cpuidle")
@@ -279,22 +289,43 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             return readCpuCoreIdleTimeInMicroseconds(cpuCoreIndex) / (1000L * oneJiffyInMillis)
         }
 
-        data class CpuSpeed(
-            val minSpeedInHz: Long,
-            val maxSpeedInHz: Long,
-            val currentSpeedInHz: Long,
+        data class CpuSpec(
+            val cpuCoreIndex: Int,
+            val minSpeedInKHz: Long,
+            val maxSpeedInKHz: Long,
+            val availableSpeedsInKHz: List<Long>
         )
 
-        private fun readCpuCoreSpeed(cpuCoreIndex: Int): CpuSpeed {
+        /**
+         * https://www.kernel.org/doc/Documentation/cpu-freq/user-guide.txt
+         */
+        private fun readCpuCoreSpeed(cpuCoreIndex: Int): Long {
             val baseDir = File("/sys/devices/system/cpu/cpu$cpuCoreIndex/cpufreq")
-            val minSpeed = File(baseDir, "cpuinfo_min_freq").readText(Charsets.UTF_8).trim().toLong()
-            val maxSpeed = File(baseDir, "cpuinfo_max_freq").readText(Charsets.UTF_8).trim().toLong()
             val currentSpeed = File(baseDir, "scaling_cur_freq").readText(Charsets.UTF_8).trim().toLong()
-            return CpuSpeed(
-                minSpeedInHz = minSpeed,
-                maxSpeedInHz = maxSpeed,
-                currentSpeedInHz = currentSpeed
-            )
+            return currentSpeed
+        }
+
+        private fun readCpuCoresSpec(cpuCoreCount: Int): List<CpuSpec> {
+            val result = ArrayList<CpuSpec>()
+            repeat(cpuCoreCount) { cpuCoreIndex ->
+                val baseDir = File("/sys/devices/system/cpu/cpu$cpuCoreIndex/cpufreq")
+                val minSpeed = File(baseDir, "cpuinfo_min_freq").readText(Charsets.UTF_8).trim().toLong()
+                val maxSpeed = File(baseDir, "cpuinfo_max_freq").readText(Charsets.UTF_8).trim().toLong()
+                val availableSpeeds = File(baseDir, "scaling_available_frequencies")
+                    .readText(Charsets.UTF_8)
+                    .split(" ")
+                    .filter { it.isNotBlank() }
+                    .map { it.trim().toLong() }
+                result.add(
+                    CpuSpec(
+                        cpuCoreIndex = cpuCoreIndex,
+                        minSpeedInKHz = minSpeed,
+                        maxSpeedInKHz = maxSpeed,
+                        availableSpeedsInKHz = availableSpeeds
+                    )
+                )
+            }
+            return result
         }
     }
 }
