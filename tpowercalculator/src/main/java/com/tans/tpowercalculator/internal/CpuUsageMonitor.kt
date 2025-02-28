@@ -15,7 +15,8 @@ internal class CpuUsageMonitor(
 
         override fun handleMessage(msg: Message) {
             val lastCpuState = lastCpuStateSnapshot.get()
-            val currentCpuState = cpuStateSnapshotCapture.createCpuStateSnapshot()!!
+            val currentCpuStateBuffer = cpuStateSnapshotCapture.readCpuStateSnapshotBuffer()!!
+            val currentCpuState = cpuStateSnapshotCapture.parseCpuStateSnapshotBuffer(currentCpuStateBuffer)
             if (lastCpuState == null) {
                 lastCpuStateSnapshot.set(currentCpuState)
                 sendNextTimeCheckTask()

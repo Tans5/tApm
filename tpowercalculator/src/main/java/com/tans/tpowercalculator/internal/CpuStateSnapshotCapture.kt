@@ -5,6 +5,8 @@ import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
 import java.io.File
+import java.io.RandomAccessFile
+import java.util.concurrent.ConcurrentHashMap
 
 internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
@@ -24,37 +26,53 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             tPowerLog.d(TAG, "Init CpuStateSnapshotCapture success.")
             true
         } catch (e: Throwable) {
+            closeAllRandomFiles()
             tPowerLog.e(TAG, "Init CpuStateSnapshotCapture fail.", e)
             false
         }
     }
 
-    fun createCpuStateSnapshot(): CpuStateSnapshot? {
+    fun readCpuStateSnapshotBuffer(): CpuStateSnapshotBuffer? {
         return if (isInitSuccess) {
             val cpuCoreCount = powerProfile.cpuProfile.coreCount
-            val currentProcessCpuSpeedToTime = readCurrentProcessCpuCoreTime()
-            val coreStates = mutableListOf<SingleCoreStateSnapshot>()
+            val currentProcessCpuSpeedToTimeBuffer = readProcessCpuCoreTimeBuffer(Process.myPid())
+            val coreStateBuffers = mutableListOf<SingleCoreStateSnapshotBuffer>()
             repeat(cpuCoreCount) { coreIndex ->
-                val cpuSpeed = readCpuCoreSpeed(coreIndex)
-                val cpuSpeedToTime = readCpuCoreTime(coreIndex)
-                val cpuIdleTime = readCpuCoreIdleTime(coreIndex)
-                coreStates.add(
-                    SingleCoreStateSnapshot(
-                        coreIndex = coreIndex,
-                        currentCoreSpeedInKHz = cpuSpeed,
-                        cpuSpeedToTime = cpuSpeedToTime,
-                        cpuIdleTime = cpuIdleTime
-                    )
+                val coreSpeedBuffer = readCpuCoreSpeedBuffer(coreIndex)
+                val cpuCoreTimeBuffer = readCpuCoreTimeBuffer(coreIndex)
+                val cpuIdleTimeBuffer = readCpuCoreIdleTimeBuffer(coreIndex)
+                coreStateBuffers.add(
+                    SingleCoreStateSnapshotBuffer(
+                    coreIndex = coreIndex,
+                    currentCoreSpeedBuffer = coreSpeedBuffer,
+                    cpuSpeedToTimeBuffer = cpuCoreTimeBuffer,
+                    cpuIdleTimeBuffer = cpuIdleTimeBuffer
+                )
                 )
             }
-            CpuStateSnapshot(
+            CpuStateSnapshotBuffer(
                 createTime = SystemClock.uptimeMillis(),
-                coreStates = coreStates,
-                currentProcessCpuSpeedToTime = currentProcessCpuSpeedToTime
+                coreStateBuffers = coreStateBuffers,
+                currentProcessCpuSpeedToTimeBuffer = currentProcessCpuSpeedToTimeBuffer
             )
         } else {
             null
         }
+    }
+
+    fun parseCpuStateSnapshotBuffer(buffer: CpuStateSnapshotBuffer): CpuStateSnapshot {
+        return CpuStateSnapshot(
+            createTime = buffer.createTime,
+            coreStates = buffer.coreStateBuffers.map {
+                SingleCoreStateSnapshot(
+                    coreIndex = it.coreIndex,
+                    currentCoreSpeedInKHz = parseCpuCoreSpeed(it.currentCoreSpeedBuffer),
+                    cpuSpeedToTime = parseCpuCoreTimeBuffer(it.cpuSpeedToTimeBuffer),
+                    cpuIdleTime = parseCpuCoreIdleTime(it.cpuIdleTimeBuffer)
+                )
+            },
+            currentProcessCpuSpeedToTime = parseProcessCpuCoreTimeBuffer(buffer.currentProcessCpuSpeedToTimeBuffer)
+        )
     }
 
     fun calculateCpuUsage(state1: CpuStateSnapshot, state2: CpuStateSnapshot): CpuUsage {
@@ -147,23 +165,27 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
     private fun checkCpuSpeedAndTime() {
         val cpuProfile = powerProfile.cpuProfile
         repeat(cpuProfile.coreCount) { coreIndex ->
-            readCpuCoreTime(coreIndex)
+            val b = readCpuCoreTimeBuffer(coreIndex)
+            parseCpuCoreTimeBuffer(b)
         }
     }
 
     private fun checkProcessCpuSpeedAndTime() {
-        readCurrentProcessCpuCoreTime()
+        val b = readProcessCpuCoreTimeBuffer(Process.myPid())
+        parseProcessCpuCoreTimeBuffer(b)
     }
 
     private fun checkCpuCoreIdleTime() {
         repeat(powerProfile.cpuProfile.coreCount) { coreIndex ->
-            readCpuCoreIdleTime(coreIndex)
+            val b = readCpuCoreIdleTimeBuffer(coreIndex)
+            parseCpuCoreIdleTime(b)
         }
     }
 
     private fun checkCpuCoreSpeed() {
         repeat(powerProfile.cpuProfile.coreCount) { coreIndex ->
-            readCpuCoreSpeed(coreIndex)
+            val b = readCpuCoreSpeedBuffer(coreIndex)
+            parseCpuCoreSpeed(b)
         }
     }
 
@@ -182,6 +204,19 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val createTime: Long,
             val coreStates: List<SingleCoreStateSnapshot>,
             val currentProcessCpuSpeedToTime: Map<Int, List<Pair<Long, Long>>>
+        )
+
+        data class SingleCoreStateSnapshotBuffer(
+            val coreIndex: Int,
+            val currentCoreSpeedBuffer: ByteArray,
+            val cpuSpeedToTimeBuffer: ByteArray,
+            val cpuIdleTimeBuffer: List<ByteArray>
+        )
+
+        data class CpuStateSnapshotBuffer(
+            val createTime: Long,
+            val coreStateBuffers: List<SingleCoreStateSnapshotBuffer>,
+            val currentProcessCpuSpeedToTimeBuffer: ByteArray
         )
 
         data class SingleCpuCoreUsage(
@@ -212,16 +247,70 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             (1000.0 / Os.sysconf(OsConstants._SC_CLK_TCK).toDouble()).toLong()
         }
 
+        private val randomFiles: ConcurrentHashMap<String, RandomAccessFile> = ConcurrentHashMap()
+
+
+        private const val MAX_RANDOM_FILE_LENGTH = 1024 * 20 // 20 KB
+
+        private val randomFileBuffer: ByteArray by lazy {
+            ByteArray(MAX_RANDOM_FILE_LENGTH)
+        }
+        private val randomFileReadBuffer: ByteArray by lazy {
+            ByteArray(1024)
+        }
+        private fun readRandomFileBuffer(key: String): ByteArray {
+            val f = randomFiles[key]
+            val targetFile = if (f != null) {
+                f
+            } else {
+                val newFile = RandomAccessFile(key, "r")
+                val oldFile = randomFiles.putIfAbsent(key, newFile)
+                if (oldFile != null) {
+                    newFile.close()
+                    oldFile
+                } else {
+                    newFile
+                }
+            }
+            targetFile.seek(0)
+            var hasReadCount = 0
+            var thisTimeReadCount = 0
+            do {
+                thisTimeReadCount = targetFile.read(randomFileReadBuffer)
+                if (thisTimeReadCount > 0) {
+                    if (hasReadCount > (MAX_RANDOM_FILE_LENGTH - thisTimeReadCount)) {
+                        error("Random file max size is $MAX_RANDOM_FILE_LENGTH")
+                    }
+                    System.arraycopy(randomFileReadBuffer, 0, randomFileBuffer, hasReadCount, thisTimeReadCount)
+                    hasReadCount += thisTimeReadCount
+                }
+            } while (thisTimeReadCount >= 0)
+
+            return if (hasReadCount > 0) {
+                randomFileBuffer.copyOf(hasReadCount)
+            } else {
+                ByteArray(0)
+            }
+        }
+
+        private fun closeAllRandomFiles() {
+            val i = randomFiles.iterator()
+            if (i.hasNext()) {
+                i.next().value.close()
+                i.remove()
+            }
+        }
+
         /**
          * https://docs.kernel.org/cpu-freq/cpufreq-stats.html
          */
+        private fun readCpuCoreTimeBuffer(cpuCoreIndex: Int): ByteArray {
+            return readRandomFileBuffer("/sys/devices/system/cpu/cpu${cpuCoreIndex}/cpufreq/stats/time_in_state")
+        }
         // first: Cpu speed, second: time in jiffies
-        private fun readCpuCoreTime(cpuCoreIndex: Int): List<Pair<Long, Long>> {
-            val f = File("/sys/devices/system/cpu/cpu${cpuCoreIndex}/cpufreq/stats/time_in_state")
+        private fun parseCpuCoreTimeBuffer(buffer: ByteArray): List<Pair<Long, Long>> {
+            val lines = String(buffer, Charsets.UTF_8).lines().filter { it.isNotBlank() }.map { it.trim() }
             val result = ArrayList<Pair<Long, Long>>()
-            val lines = f.inputStream().bufferedReader(Charsets.UTF_8).use {
-                it.readLines()
-            }
             for (l in lines) {
                 result.add(
                     l.split(" ").let {
@@ -232,14 +321,13 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             return result
         }
 
-        private fun readCurrentProcessCpuCoreTime(): Map<Int, List<Pair<Long, Long>>> = readProcessCpuCoreTime(Process.myPid())
+        private fun readProcessCpuCoreTimeBuffer(pid: Int): ByteArray {
+            return readRandomFileBuffer("/proc/$pid/time_in_state")
+        }
 
-        private fun readProcessCpuCoreTime(pid: Int): Map<Int, List<Pair<Long, Long>>> {
-            val f = File("/proc/$pid/time_in_state")
-            val lines = f.inputStream().bufferedReader(Charsets.UTF_8).use {
-                it.readLines()
-            }
-            val reCpuTime = "cpu([0-9]*)".toRegex()
+        private val reCpuTime = "cpu([0-9]*)".toRegex()
+        private fun parseProcessCpuCoreTimeBuffer(buffer: ByteArray): Map<Int, List<Pair<Long, Long>>> {
+            val lines = String(buffer, Charsets.UTF_8).lines().filter { it.isNotBlank() }.map { it.trim() }
             val result = mutableMapOf<Int, List<Pair<Long, Long>>>()
             var parsingCpu: ArrayList<Pair<Long, Long>>? = null
             var parsingCpuIndex: Int? = null
@@ -265,16 +353,15 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         /**
          * https://android.googlesource.com/kernel/common/+/a7827a2a60218b25f222b54f77ed38f57aebe08b/Documentation/cpuidle/sysfs.txt
          */
-        // read cpu idle time in microseconds.
-        private fun readCpuCoreIdleTimeInMicroseconds(cpuCoreIndex: Int): Long {
+        private fun readCpuCoreIdleTimeBuffer(cpuCoreIndex: Int): List<ByteArray> {
             val baseDir = File("/sys/devices/system/cpu/cpu$cpuCoreIndex/cpuidle")
-            var result = 0L
-            var isFoundIdleFile = false
+            val result: MutableList<ByteArray> = mutableListOf()
             val childrenFiles = baseDir.listFiles() ?: emptyArray()
+            var isFoundIdleFile = false
             for (c in childrenFiles) {
                 if (c.name.startsWith("state")) {
-                    val timeFile = File(c, "time")
-                    result += timeFile.readText(Charsets.UTF_8).trim().toLong()
+                    val b = readRandomFileBuffer(c.canonicalPath + "/time")
+                    result.add(b)
                     isFoundIdleFile = true
                 }
             }
@@ -284,9 +371,27 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             return result
         }
 
-        // read cpu idle time in jiffies.
-        private fun readCpuCoreIdleTime(cpuCoreIndex: Int): Long {
-            return readCpuCoreIdleTimeInMicroseconds(cpuCoreIndex) / (1000L * oneJiffyInMillis)
+        private fun parseCpuCoreIdleTimeInMicroseconds(buffers: List<ByteArray>): Long {
+            var result = 0L
+            for (b in buffers) {
+                result += String(b, Charsets.UTF_8).trim().toLong()
+            }
+            return result
+        }
+
+        private fun parseCpuCoreIdleTime(buffers: List<ByteArray>): Long {
+            return parseCpuCoreIdleTimeInMicroseconds(buffers) / (1000L * oneJiffyInMillis)
+        }
+
+        /**
+         * https://www.kernel.org/doc/Documentation/cpu-freq/user-guide.txt
+         */
+        private fun readCpuCoreSpeedBuffer(coreIndex: Int): ByteArray {
+            return readRandomFileBuffer("/sys/devices/system/cpu/cpu$coreIndex/cpufreq/scaling_cur_freq")
+        }
+
+        private fun parseCpuCoreSpeed(buffer: ByteArray): Long {
+            return String(buffer, Charsets.UTF_8).trim().toLong()
         }
 
         data class CpuSpec(
@@ -295,15 +400,6 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val maxSpeedInKHz: Long,
             val availableSpeedsInKHz: List<Long>
         )
-
-        /**
-         * https://www.kernel.org/doc/Documentation/cpu-freq/user-guide.txt
-         */
-        private fun readCpuCoreSpeed(cpuCoreIndex: Int): Long {
-            val baseDir = File("/sys/devices/system/cpu/cpu$cpuCoreIndex/cpufreq")
-            val currentSpeed = File(baseDir, "scaling_cur_freq").readText(Charsets.UTF_8).trim().toLong()
-            return currentSpeed
-        }
 
         private fun readCpuCoresSpec(cpuCoreCount: Int): List<CpuSpec> {
             val result = ArrayList<CpuSpec>()
