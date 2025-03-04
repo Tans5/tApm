@@ -2,6 +2,7 @@ package com.tans.tpowercalculator
 
 import org.junit.Test
 import java.util.Locale
+import kotlin.math.max
 
 /**
  * power_profile:
@@ -387,7 +388,7 @@ class PowerCalculateTest {
             val activeTime = clusterSpeedAndTimeCostInJiffies.values.sum().jiffiesToHours()
             println("----------------------------------------------------------------")
             println("Cluster: $clusterName, ActiveTime: ${activeTime.toHoursString()}, CoreCount: $clusterCoreCount")
-            var powerCost = (cpuSuspend + cpuActive + clusterPower) * activeTime
+            var powerCost = clusterPower * activeTime
             for ((speed, timeCostInJiffies) in clusterSpeedAndTimeCostInJiffies) {
                 val timeCostInHour = timeCostInJiffies.jiffiesToHours()
                 val speedExtraPower = clusterSpeedExtraPower[clusterSpeeds.indexOf(speed)]
@@ -427,6 +428,10 @@ class PowerCalculateTest {
             clusterSpeedAndTimeCostInJiffies = cluster2SpeedAndTimeCostInJiffies
         )
 
-        println("CpuPowerCost: ${(cluster0PowerCost + cluster1PowerCost + cluster2PowerCost).toPowerString()}")
+        // TODO: We don't known idle time，So can't calculate cpu idle power cost.
+        // val cpuPower = cpuSuspend * uptimeInHour  + cpuActive * cpuActiveTimeInHour + cpusIdle * cpuIdleTimeInHour
+        val cpuPower = cpuSuspend * uptimeInHour + cpuActive * (max(max(cluster0SpeedAndTimeCostInJiffies.values.sum(), cluster1SpeedAndTimeCostInJiffies.values.sum()), cluster2SpeedAndTimeCostInJiffies.values.sum()).jiffiesToHours())
+
+        println("CpuPowerCost: ${(cpuPower + cluster0PowerCost + cluster1PowerCost + cluster2PowerCost).toPowerString()}")
     }
 }
