@@ -306,7 +306,7 @@ internal class PowerProfile private constructor(
                             }
                             val t = parser.text.toFloat()
                             array.add(t)
-                            tPowerLog.d(TAG, "    <value>$t</value")
+                            tPowerLog.d(TAG, "    <value>$t</value>")
                             continue
                         }
                     }
@@ -319,7 +319,7 @@ internal class PowerProfile private constructor(
                             continue
                         }
                         parsingArray = attrName to mutableListOf()
-                        tPowerLog.d(TAG, "<array \"name\"=\"$attrName\">")
+                        tPowerLog.d(TAG, "<array name=\"$attrName\">")
                         continue
                     }
 
@@ -335,7 +335,7 @@ internal class PowerProfile private constructor(
                             continue
                         }
                         val value = parser.text.toFloat()
-                        tPowerLog.d(TAG, "<item \"name\"=\"$attrName\">$value</item>")
+                        tPowerLog.d(TAG, "<item name=\"$attrName\">$value</item>")
                         onItem(name = attrName, value = value)
                         continue
                     }
