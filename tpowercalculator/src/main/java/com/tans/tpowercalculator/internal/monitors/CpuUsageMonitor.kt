@@ -15,12 +15,9 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal class CpuUsageMonitor(
     private val cpuStateSnapshotCapture: CpuStateSnapshotCapture
-) : Monitor<CpuUsage> by Monitor(CPU_USAGE_CHECK_INTERNAL) {
+) : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CPU_USAGE_CHECK_INTERNAL) {
 
-    override val isSupport: Boolean
-        get() {
-            return cpuStateSnapshotCapture.isInitSuccess
-        }
+    override val isSupport: Boolean = cpuStateSnapshotCapture.isInitSuccess
 
     private val lastCpuStateSnapshot: AtomicReference<CpuStateSnapshot?> = AtomicReference(null)
 

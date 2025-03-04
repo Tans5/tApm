@@ -49,19 +49,3 @@ interface Monitor<T : Any> {
         this.monitorCallback.get()?.updateData(t)
     }
 }
-
-fun <T: Any> Monitor(defaultMonitorIntervalInMillis: Long) : Monitor<T> {
-    return object : Monitor<T> {
-        override val isSupport: Boolean = false
-        override val isRunning: AtomicBoolean = AtomicBoolean(false)
-        override val monitorIntervalInMillis: AtomicLong = AtomicLong(defaultMonitorIntervalInMillis)
-        override val monitorCallback: AtomicReference<MonitorCallback<T>?> = AtomicReference(null)
-
-        override fun onStart() {
-        }
-
-        override fun onStop() {
-
-        }
-    }
-}
