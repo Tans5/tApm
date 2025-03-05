@@ -1,20 +1,17 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
 }
 
 android {
-    namespace = "com.tans.tapm.demo"
+    namespace = "com.tans.tapm"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tans.tapm.demo"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildTypes {
@@ -33,25 +30,9 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
-    buildFeatures {
-        viewBinding {
-            enable = true
-        }
-    }
 }
 
 dependencies {
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-
-    implementation(libs.coroutines.core)
-    implementation(libs.coroutines.core.jvm)
-    implementation(libs.coroutines.android)
-
-    implementation(libs.tuiutils)
-    implementation(project(":tapm"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

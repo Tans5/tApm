@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "tPowerCalculator"
 include(":demo")
-include(":tpowercalculator")
+include(":tapm")
