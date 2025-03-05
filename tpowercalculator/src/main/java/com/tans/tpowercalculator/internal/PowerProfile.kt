@@ -75,299 +75,316 @@ internal class PowerProfile private constructor(
         private const val TAG = "PowerProfile"
 
         @SuppressLint("DiscouragedApi")
-        fun parsePowerProfile(application: Application): PowerProfile {
+        fun parsePowerProfile(application: Application): PowerProfile? {
             tPowerLog.d(TAG, "Do parse power profile.")
-            val id = application.resources.getIdentifier("power_profile", "xml", "android")
-            val parser = application.resources.getXml(id)
-            val cpuProfileBuilder = ComponentProfile.CpuProfile.Companion.Builder()
-            val screenProfileBuilder = ComponentProfile.ScreenProfile.Companion.Builder()
-            val audioProfileBuilder = ComponentProfile.AudioProfile.Companion.Builder()
-            val bluetoothProfileBuilder = ComponentProfile.BluetoothProfile.Companion.Builder()
-            val cameraProfileBuilder = ComponentProfile.CameraProfile.Companion.Builder()
-            val flashlightProfileBuilder = ComponentProfile.FlashlightProfile.Companion.Builder()
-            val gpsProfileBuilder = ComponentProfile.GpsProfile.Companion.Builder()
-            val modemProfileBuilder = ComponentProfile.ModemProfile.Companion.Builder()
-            val videoProfileBuilder = ComponentProfile.VideoProfile.Companion.Builder()
-            val wifiProfileBuilder = ComponentProfile.WifiProfile.Companion.Builder()
-            var batteryCapacity = 0
+
+            return try {
+                val id = application.resources.getIdentifier("power_profile", "xml", "android")
+                val parser = application.resources.getXml(id)
+                val cpuProfileBuilder = ComponentProfile.CpuProfile.Companion.Builder()
+                val screenProfileBuilder = ComponentProfile.ScreenProfile.Companion.Builder()
+                val audioProfileBuilder = ComponentProfile.AudioProfile.Companion.Builder()
+                val bluetoothProfileBuilder = ComponentProfile.BluetoothProfile.Companion.Builder()
+                val cameraProfileBuilder = ComponentProfile.CameraProfile.Companion.Builder()
+                val flashlightProfileBuilder = ComponentProfile.FlashlightProfile.Companion.Builder()
+                val gpsProfileBuilder = ComponentProfile.GpsProfile.Companion.Builder()
+                val modemProfileBuilder = ComponentProfile.ModemProfile.Companion.Builder()
+                val videoProfileBuilder = ComponentProfile.VideoProfile.Companion.Builder()
+                val wifiProfileBuilder = ComponentProfile.WifiProfile.Companion.Builder()
+                var batteryCapacity = 0
 
 
-            val reClusterPower = "cpu.cluster_power.cluster([0-9]*)".toRegex()
-            val reCoreSpeeds = "cpu.core_speeds.cluster([0-9]*)".toRegex()
-            val reCorePower = "cpu.core_power.cluster([0-9]*)".toRegex()
+                val reClusterPower = "cpu.cluster_power.cluster([0-9]*)".toRegex()
+                val reCoreSpeeds = "cpu.core_speeds.cluster([0-9]*)".toRegex()
+                val reCorePower = "cpu.core_power.cluster([0-9]*)".toRegex()
 
 
-            val reScreenAmbient = "ambient.on.display([0-9]*)".toRegex()
-            val reScreenOn = "screen.on.display([0-9]*)".toRegex()
-            val reScreenFull = "screen.full.display([0-9]*)".toRegex()
+                val reScreenAmbient = "ambient.on.display([0-9]*)".toRegex()
+                val reScreenOn = "screen.on.display([0-9]*)".toRegex()
+                val reScreenFull = "screen.full.display([0-9]*)".toRegex()
 
-            val reCpuClusterSpeed = "cpu.speeds.cluster([0-9]*)".toRegex()
-            val reCpuClusterActive = "cpu.active.cluster([0-9]*)".toRegex()
+                val reCpuClusterSpeed = "cpu.speeds.cluster([0-9]*)".toRegex()
+                val reCpuClusterActive = "cpu.active.cluster([0-9]*)".toRegex()
 
-            fun Regex.index(name: String): Int {
-                return this.find(name)!!.groupValues[1].toInt()
-            }
-
-            fun onItem(name: String, value: Float) {
-                when  {
-                    name == "cpu.suspend" -> {
-                        cpuProfileBuilder.suspendMa = value
-                    }
-                    name == "cpu.idle" -> {
-                        cpuProfileBuilder.idleMa = value
-                    }
-                    name == "cpu.active" -> {
-                        cpuProfileBuilder.activeMa = value
-                    }
-                    reClusterPower.matches(name) -> {
-                        val index = reClusterPower.index(name)
-                        cpuProfileBuilder.clusterOnPower[index] = value
-                    }
-                    name == "ambient.on" -> {
-                        screenProfileBuilder.ambientMa = value
-                    }
-                    name == "screen.on" -> {
-                        screenProfileBuilder.onMa = value
-                    }
-                    name == "screen.full" -> {
-                        screenProfileBuilder.fullMa = value
-                    }
-                    reScreenAmbient.matches(name) -> {
-                        val index = reScreenAmbient.index(name)
-                        screenProfileBuilder.screensAmbientMa[index] = value
-                    }
-                    reScreenOn.matches(name) -> {
-                        val index = reScreenOn.index(name)
-                        screenProfileBuilder.screensOnMa[index] = value
-                    }
-                    reScreenFull.matches(name) -> {
-                        val index = reScreenFull.index(name)
-                        screenProfileBuilder.screensFullMa[index] = value
-                    }
-                    name == "audio" -> {
-                        audioProfileBuilder.onMa = value
-                    }
-                    name == "bluetooth.active" -> {
-                        bluetoothProfileBuilder.activeMa = value
-                    }
-                    name == "bluetooth.on" -> {
-                        bluetoothProfileBuilder.onMa = value
-                    }
-                    name == "bluetooth.controller.idle" -> {
-                        bluetoothProfileBuilder.idleMa = value
-                    }
-                    name == "bluetooth.controller.rx" -> {
-                        bluetoothProfileBuilder.rxMa = value
-                    }
-                    name == "bluetooth.controller.tx" -> {
-                        bluetoothProfileBuilder.txMa = value
-                    }
-                    name == "camera.avg" -> {
-                        cameraProfileBuilder.onMa = value
-                    }
-                    name == "camera.flashlight" -> {
-                        flashlightProfileBuilder.onMa = value
-                    }
-                    name == "gps.on" -> {
-                        gpsProfileBuilder.onMa = value
-                    }
-                    name == "radio.active" -> {
-                        modemProfileBuilder.activeMa = value
-                    }
-                    name == "modem.controller.sleep" -> {
-                        modemProfileBuilder.sleepMa = value
-                    }
-                    name == "modem.controller.idle" -> {
-                        modemProfileBuilder.idleMa = value
-                    }
-                    name == "modem.controller.rx" -> {
-                        modemProfileBuilder.rxMa = value
-                    }
-                    name == "radio.scanning" -> {
-                        modemProfileBuilder.scanningMa = value
-                    }
-                    name == "video" -> {
-                        videoProfileBuilder.onMa = value
-                    }
-                    name == "wifi.on" -> {
-                        wifiProfileBuilder.onMa = value
-                    }
-                    name == "wifi.active" -> {
-                        wifiProfileBuilder.activeMa = value
-                    }
-                    name == "wifi.scan" -> {
-                        wifiProfileBuilder.scanMa = value
-                    }
-                    name == "wifi.controller.idle" -> {
-                        wifiProfileBuilder.idleMa = value
-                    }
-                    name == "wifi.controller.rx" -> {
-                        wifiProfileBuilder.rxMa = value
-                    }
-                    name == "wifi.controller.tx" -> {
-                        wifiProfileBuilder.txMa = value
-                    }
-                    name == "battery.capacity" -> {
-                        batteryCapacity = value.toInt()
-                    }
-                    else -> {
-                        tPowerLog.w(TAG, "Unknown: $name -> $value")
-                    }
+                fun Regex.index(name: String): Int {
+                    return this.find(name)!!.groupValues[1].toInt()
                 }
-            }
 
-            fun onArray(name: String, value: List<Float>) {
-                when {
-                    name == "cpu.clusters.cores" -> {
-                        cpuProfileBuilder.coreCount.clear()
-                        for (i in value) {
-                            cpuProfileBuilder.coreCount.add(i.toInt())
+                fun onItem(name: String, value: Float) {
+                    when  {
+                        name == "cpu.suspend" -> {
+                            cpuProfileBuilder.suspendMa = value
+                        }
+                        name == "cpu.idle" -> {
+                            cpuProfileBuilder.idleMa = value
+                        }
+                        name == "cpu.active" -> {
+                            cpuProfileBuilder.activeMa = value
+                        }
+                        reClusterPower.matches(name) -> {
+                            val index = reClusterPower.index(name)
+                            cpuProfileBuilder.clusterOnPower[index] = value
+                        }
+                        name == "ambient.on" -> {
+                            screenProfileBuilder.ambientMa = value
+                        }
+                        name == "screen.on" -> {
+                            screenProfileBuilder.onMa = value
+                        }
+                        name == "screen.full" -> {
+                            screenProfileBuilder.fullMa = value
+                        }
+                        reScreenAmbient.matches(name) -> {
+                            val index = reScreenAmbient.index(name)
+                            screenProfileBuilder.screensAmbientMa[index] = value
+                        }
+                        reScreenOn.matches(name) -> {
+                            val index = reScreenOn.index(name)
+                            screenProfileBuilder.screensOnMa[index] = value
+                        }
+                        reScreenFull.matches(name) -> {
+                            val index = reScreenFull.index(name)
+                            screenProfileBuilder.screensFullMa[index] = value
+                        }
+                        name == "audio" -> {
+                            audioProfileBuilder.onMa = value
+                        }
+                        name == "bluetooth.active" -> {
+                            bluetoothProfileBuilder.activeMa = value
+                        }
+                        name == "bluetooth.on" -> {
+                            bluetoothProfileBuilder.onMa = value
+                        }
+                        name == "bluetooth.controller.idle" -> {
+                            bluetoothProfileBuilder.idleMa = value
+                        }
+                        name == "bluetooth.controller.rx" -> {
+                            bluetoothProfileBuilder.rxMa = value
+                        }
+                        name == "bluetooth.controller.tx" -> {
+                            bluetoothProfileBuilder.txMa = value
+                        }
+                        name == "camera.avg" -> {
+                            cameraProfileBuilder.onMa = value
+                        }
+                        name == "camera.flashlight" -> {
+                            flashlightProfileBuilder.onMa = value
+                        }
+                        name == "gps.on" -> {
+                            gpsProfileBuilder.onMa = value
+                        }
+                        name == "radio.active" -> {
+                            modemProfileBuilder.activeMa = value
+                        }
+                        name == "modem.controller.sleep" -> {
+                            modemProfileBuilder.sleepMa = value
+                        }
+                        name == "modem.controller.idle" -> {
+                            modemProfileBuilder.idleMa = value
+                        }
+                        name == "modem.controller.rx" -> {
+                            modemProfileBuilder.rxMa = value
+                        }
+                        name == "radio.scanning" -> {
+                            modemProfileBuilder.scanningMa = value
+                        }
+                        name == "video" -> {
+                            videoProfileBuilder.onMa = value
+                        }
+                        name == "wifi.on" -> {
+                            wifiProfileBuilder.onMa = value
+                        }
+                        name == "wifi.active" -> {
+                            wifiProfileBuilder.activeMa = value
+                        }
+                        name == "wifi.scan" -> {
+                            wifiProfileBuilder.scanMa = value
+                        }
+                        name == "wifi.controller.idle" -> {
+                            wifiProfileBuilder.idleMa = value
+                        }
+                        name == "wifi.controller.rx" -> {
+                            wifiProfileBuilder.rxMa = value
+                        }
+                        name == "wifi.controller.tx" -> {
+                            wifiProfileBuilder.txMa = value
+                        }
+                        name == "battery.capacity" -> {
+                            batteryCapacity = value.toInt()
+                        }
+                        else -> {
+                            tPowerLog.w(TAG, "Unknown: $name -> $value")
                         }
                     }
-                    reCoreSpeeds.matches(name) -> {
-                        val index = reCoreSpeeds.index(name)
-                        cpuProfileBuilder.coreSpeeds[index] = value.map { it.toLong() }
-                    }
-                    reCorePower.matches(name) -> {
-                        val index = reCorePower.index(name)
-                        cpuProfileBuilder.corePower[index] = value
-                    }
-                    name == "gps.signalqualitybased" -> {
-                        gpsProfileBuilder.signalMa.clear()
-                        gpsProfileBuilder.signalMa.addAll(value)
-                    }
-                    name == "modem.controller.tx" -> {
-                        modemProfileBuilder.txMa.clear()
-                        modemProfileBuilder.txMa.addAll(value)
-                    }
-                    name == "radio.on" -> {
-                        modemProfileBuilder.onMa = value
-                    }
-                    name == "cpu.active" -> {
-                        cpuProfileBuilder.clusterMa = value
-                    }
-                    reCpuClusterSpeed.matches(name) -> {
-                        val index = reCpuClusterSpeed.index(name)
-                        cpuProfileBuilder.clusterSpeeds[index] = value.map { it.toLong() }
-                    }
-                    reCpuClusterActive.matches(name) -> {
-                        val index = reCpuClusterActive.index(name)
-                        cpuProfileBuilder.clusterActiveMa[index] = value
-                    }
-                    else -> {
-                        tPowerLog.w(TAG, "Unknown: $name -> $value")
-                    }
                 }
-            }
 
-            parser.use {
-
-                fun nextStartTag(): String? {
-                    var type: Int
-                    do {
-                        type = parser.next()
-                    } while (type != XmlPullParser.START_TAG && type != XmlPullParser.END_TAG && type != XmlPullParser.END_DOCUMENT)
-                    return if (type == XmlPullParser.START_TAG) {
-                        parser.name
-                    } else {
-                        null
+                fun onArray(name: String, value: List<Float>) {
+                    when {
+                        name == "cpu.clusters.cores" -> {
+                            cpuProfileBuilder.coreCount.clear()
+                            for (i in value) {
+                                cpuProfileBuilder.coreCount.add(i.toInt())
+                            }
+                        }
+                        reCoreSpeeds.matches(name) -> {
+                            val index = reCoreSpeeds.index(name)
+                            cpuProfileBuilder.coreSpeeds[index] = value.map { it.toLong() }
+                        }
+                        reCorePower.matches(name) -> {
+                            val index = reCorePower.index(name)
+                            cpuProfileBuilder.corePower[index] = value
+                        }
+                        name == "gps.signalqualitybased" -> {
+                            gpsProfileBuilder.signalMa.clear()
+                            gpsProfileBuilder.signalMa.addAll(value)
+                        }
+                        name == "modem.controller.tx" -> {
+                            modemProfileBuilder.txMa.clear()
+                            modemProfileBuilder.txMa.addAll(value)
+                        }
+                        name == "radio.on" -> {
+                            modemProfileBuilder.onMa = value
+                        }
+                        name == "cpu.active" -> {
+                            cpuProfileBuilder.clusterMa = value
+                        }
+                        reCpuClusterSpeed.matches(name) -> {
+                            val index = reCpuClusterSpeed.index(name)
+                            cpuProfileBuilder.clusterSpeeds[index] = value.map { it.toLong() }
+                        }
+                        reCpuClusterActive.matches(name) -> {
+                            val index = reCpuClusterActive.index(name)
+                            cpuProfileBuilder.clusterActiveMa[index] = value
+                        }
+                        else -> {
+                            tPowerLog.w(TAG, "Unknown: $name -> $value")
+                        }
                     }
                 }
 
-                // <device>
-                var tagName = nextStartTag()
-                if (tagName != "device") {
-                    error("First tag is not <device>")
-                }
-                var attrName: String?
-                var parsingArray: Pair<String, MutableList<Float>>? = null
-                while (true) {
-                    tagName = nextStartTag()
-                    if (tagName == null) {
-                        if (parser.eventType == XmlPullParser.END_DOCUMENT) {
-                            break
+
+                parser.use {
+
+                    fun nextStartTag(): String? {
+                        var type: Int
+                        do {
+                            type = parser.next()
+                        } while (type != XmlPullParser.START_TAG && type != XmlPullParser.END_TAG && type != XmlPullParser.END_DOCUMENT)
+                        return if (type == XmlPullParser.START_TAG) {
+                            parser.name
                         } else {
-                            continue
+                            null
                         }
                     }
 
-                    // array value
-                    if (parsingArray != null) {
-                        if (tagName != "value") {
-                            onArray(name = parsingArray.first, value = parsingArray.second)
-                            tPowerLog.d(TAG, "</array>")
-                            parsingArray = null
-                        } else {
-                            // <value>
-                            val array = parsingArray.second
-                            if (parser.next() != XmlPullParser.TEXT) {
-                                tPowerLog.w(TAG, "Skip tag <value>, next tag not text")
+                    // <device>
+                    var tagName = nextStartTag()
+                    if (tagName != "device") {
+                        error("First tag is not <device>")
+                    }
+                    var attrName: String?
+                    var parsingArray: Pair<String, MutableList<Float>>? = null
+                    while (true) {
+                        tagName = nextStartTag()
+                        if (tagName == null) {
+                            if (parser.eventType == XmlPullParser.END_DOCUMENT) {
+                                break
+                            } else {
                                 continue
                             }
-                            val t = parser.text.toFloat()
-                            array.add(t)
-                            tPowerLog.d(TAG, "    <value>$t</value>")
+                        }
+
+                        // array value
+                        if (parsingArray != null) {
+                            if (tagName != "value") {
+                                onArray(name = parsingArray.first, value = parsingArray.second)
+                                tPowerLog.d(TAG, "</array>")
+                                parsingArray = null
+                            } else {
+                                // <value>
+                                val array = parsingArray.second
+                                if (parser.next() != XmlPullParser.TEXT) {
+                                    tPowerLog.w(TAG, "Skip tag <value>, next tag not text")
+                                    continue
+                                }
+                                val t = try {
+                                    parser.text.toFloat()
+                                } catch (e: Throwable) {
+                                    tPowerLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.")
+                                    0.0f
+                                }
+                                array.add(t)
+                                tPowerLog.d(TAG, "    <value>${parser.text}</value>")
+                                continue
+                            }
+                        }
+
+                        // <array>
+                        if (tagName == "array") {
+                            attrName = parser.getAttributeValue(null, "name")
+                            if (attrName == null) {
+                                tPowerLog.w(TAG, "Skip tag <array>, no name attr.")
+                                continue
+                            }
+                            parsingArray = attrName to mutableListOf()
+                            tPowerLog.d(TAG, "<array name=\"$attrName\">")
                             continue
                         }
-                    }
 
-                    // <array>
-                    if (tagName == "array") {
+                        // <item>
+                        if (tagName == "item") {
+                            attrName = parser.getAttributeValue(null, "name")
+                            if (attrName == null) {
+                                tPowerLog.w(TAG, "Skip tag <item>, no name attr.")
+                                continue
+                            }
+                            if (parser.next() != XmlPullParser.TEXT) {
+                                tPowerLog.w(TAG, "Skip tag <item>, next tag not text.")
+                                continue
+                            }
+                            val t = try {
+                                parser.text.toFloat()
+                            } catch (e: Throwable) {
+                                tPowerLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.")
+                                0.0f
+                            }
+                            tPowerLog.d(TAG, "<item name=\"$attrName\">${parser.text}</item>")
+                            onItem(name = attrName, value = t)
+                            continue
+                        }
+
+                        // Ignore
                         attrName = parser.getAttributeValue(null, "name")
-                        if (attrName == null) {
-                            tPowerLog.w(TAG, "Skip tag <array>, no name attr.")
-                            continue
+                        val t: String? = if (parser.next() == XmlPullParser.TEXT) {
+                            parser.text
+                        } else {
+                            null
                         }
-                        parsingArray = attrName to mutableListOf()
-                        tPowerLog.d(TAG, "<array name=\"$attrName\">")
-                        continue
+                        tPowerLog.d(TAG, "Ignore tag=$tagName${if (attrName != null) ", name=$attrName" else ""}${if (t != null) ", value=$t" else ""}")
                     }
-
-                    // <item>
-                    if (tagName == "item") {
-                        attrName = parser.getAttributeValue(null, "name")
-                        if (attrName == null) {
-                            tPowerLog.w(TAG, "Skip tag <item>, no name attr.")
-                            continue
-                        }
-                        if (parser.next() != XmlPullParser.TEXT) {
-                            tPowerLog.w(TAG, "Skip tag <item>, next tag not text.")
-                            continue
-                        }
-                        val value = parser.text.toFloat()
-                        tPowerLog.d(TAG, "<item name=\"$attrName\">$value</item>")
-                        onItem(name = attrName, value = value)
-                        continue
+                    if (parsingArray != null) {
+                        onArray(name = parsingArray.first, value = parsingArray.second)
+                        tPowerLog.d(TAG, "</array>")
                     }
-
-                    // Ignore
-                    attrName = parser.getAttributeValue(null, "name")
-                    val t: String? = if (parser.next() == XmlPullParser.TEXT) {
-                        parser.text
-                    } else {
-                        null
-                    }
-                    tPowerLog.d(TAG, "Ignore tag=$tagName${if (attrName != null) ", name=$attrName" else ""}${if (t != null) ", value=$t" else ""}")
                 }
-                if (parsingArray != null) {
-                    onArray(name = parsingArray.first, value = parsingArray.second)
-                    tPowerLog.d(TAG, "</array>")
-                }
+
+                PowerProfile(
+                    cpuProfile = cpuProfileBuilder.build(),
+                    screenProfile = screenProfileBuilder.build(),
+                    audioProfile = audioProfileBuilder.build(),
+                    bluetoothProfile = bluetoothProfileBuilder.build(),
+                    cameraProfile = cameraProfileBuilder.build(),
+                    flashlightProfile = flashlightProfileBuilder.build(),
+                    gpsProfile = gpsProfileBuilder.build(),
+                    modemProfile = modemProfileBuilder.build(),
+                    videoProfile = videoProfileBuilder.build(),
+                    wifiProfile = wifiProfileBuilder.build(),
+                    batteryCapacity = batteryCapacity
+                )
+            } catch (e: Throwable) {
+                tPowerLog.e(TAG, "Parse profile fail: ${e.message}", e)
+                null
             }
-
-            return PowerProfile(
-                cpuProfile = cpuProfileBuilder.build(),
-                screenProfile = screenProfileBuilder.build(),
-                audioProfile = audioProfileBuilder.build(),
-                bluetoothProfile = bluetoothProfileBuilder.build(),
-                cameraProfile = cameraProfileBuilder.build(),
-                flashlightProfile = flashlightProfileBuilder.build(),
-                gpsProfile = gpsProfileBuilder.build(),
-                modemProfile = modemProfileBuilder.build(),
-                videoProfile = videoProfileBuilder.build(),
-                wifiProfile = wifiProfileBuilder.build(),
-                batteryCapacity = batteryCapacity
-            )
         }
     }
 }

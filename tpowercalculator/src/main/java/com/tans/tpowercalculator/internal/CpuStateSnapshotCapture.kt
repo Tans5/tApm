@@ -1,7 +1,6 @@
 package com.tans.tpowercalculator.internal
 
 import android.os.Process
-import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
 import com.tans.tpowercalculator.model.CpuSpec
@@ -33,6 +32,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
         }
     }
 
+    @Synchronized
     fun readCpuStateSnapshotBuffer(): CpuStateSnapshotBuffer? {
         return if (isInitSuccess) {
             val cpuCoreCount = powerProfile.cpuProfile.coreCount
@@ -52,7 +52,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
                 )
             }
             CpuStateSnapshotBuffer(
-                createTime = SystemClock.uptimeMillis(),
+                createTime = System.currentTimeMillis(),
                 coreStateBuffers = coreStateBuffers,
                 currentProcessCpuSpeedToTimeBuffer = currentProcessCpuSpeedToTimeBuffer
             )
@@ -164,7 +164,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             }
             targetFile.seek(0)
             var hasReadCount = 0
-            var thisTimeReadCount = 0
+            var thisTimeReadCount: Int
             do {
                 thisTimeReadCount = targetFile.read(randomFileReadBuffer)
                 if (thisTimeReadCount > 0) {

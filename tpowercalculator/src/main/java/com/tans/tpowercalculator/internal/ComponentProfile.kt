@@ -32,7 +32,7 @@ internal sealed class ComponentProfile {
             )
 
             data class Frequency(
-                val speedHz: Long,
+                val speedKhz: Long,
                 val onMa: Float
             )
 
@@ -66,7 +66,7 @@ internal sealed class ComponentProfile {
                             val p = power?.get(i) ?: 0.0f
                             frequencies.add(
                                 Frequency(
-                                    speedHz = s,
+                                    speedKhz = s,
                                     onMa = p
                                 )
                             )

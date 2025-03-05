@@ -6,8 +6,6 @@ import com.tans.tpowercalculator.internal.CpuStateSnapshotCapture
 import com.tans.tpowercalculator.internal.CpuStateSnapshotCapture.Companion.CpuStateSnapshot
 import com.tans.tpowercalculator.internal.Executors
 import com.tans.tpowercalculator.internal.tPowerLog
-import com.tans.tpowercalculator.internal.toHumanReadableCpuUsage
-import com.tans.tpowercalculator.internal.toHumanReadableCpuSpeed
 import com.tans.tpowercalculator.model.CpuUsage
 import com.tans.tpowercalculator.model.ProgressSingleCpuCoreUsage
 import com.tans.tpowercalculator.model.SingleCpuCoreUsage
@@ -36,18 +34,7 @@ internal class CpuUsageMonitor(
                 }
 
                 val cpuUsage = calculateCpuUsage(lastCpuState, currentCpuState)
-                tPowerLog.d(TAG, "------------------------------------------")
-                tPowerLog.d(
-                    TAG,
-                    "CpuAvgUsage: ${cpuUsage.avgCpuUsage.toHumanReadableCpuUsage()}, CurrentProcessCpuAvgUsage: ${cpuUsage.currentProcessAvgCpuUsage.toHumanReadableCpuUsage()}"
-                )
-                for (usage in cpuUsage.cpuCoresUsage) {
-                    tPowerLog.d(
-                        TAG,
-                        "CpuIndex: ${usage.coreIndex}, Usage=${usage.cpuUsage.toHumanReadableCpuUsage()}, CurrentSpeed=${usage.currentCoreSpeedInKHz.toHumanReadableCpuSpeed()}, MaxSpeed=${usage.coreSpec.maxSpeedInKHz.toHumanReadableCpuSpeed()}, MinSpeed=${usage.coreSpec.minSpeedInKHz.toHumanReadableCpuSpeed()}"
-                    )
-                }
-                tPowerLog.d(TAG, "------------------------------------------")
+                tPowerLog.d(TAG, cpuUsage.toString())
                 lastCpuStateSnapshot.set(currentCpuState)
                 sendNextTimeCheckTask()
                 updateMonitorData(cpuUsage)
@@ -85,7 +72,6 @@ internal class CpuUsageMonitor(
             next = state1
             previous = state2
         }
-        val durationInMillis = next.createTime - previous.createTime
 
         // All processes cpu cores usages.
         val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
@@ -111,7 +97,7 @@ internal class CpuUsageMonitor(
                     cpuUsage = cpuUsage,
                     allCpuTimeInJiffies = allCpuTimeInJiffies,
                     cpuIdleTimeInJiffies = cpuIdleTimeInJiffies,
-                    cpuWorkTimeInJiffies = cpuWorkTimeInJiffies
+                    cpuActiveTimeInJiffies = cpuWorkTimeInJiffies
                 )
             )
         }
@@ -155,7 +141,8 @@ internal class CpuUsageMonitor(
         }
         val currentProcessAvgCpuUsage = currentProcessAvgCpuUsageNum / currentProcessAvgCpuUsageDen
         return CpuUsage(
-            durationInMillis = durationInMillis,
+            startTimeInMillis = previous.createTime,
+            endTimeInMillis = next.createTime,
             cpuCoresUsage = cpuCoreUsages,
             avgCpuUsage = avgCpuUsage,
             currentProcessCpuCoresUsage = currentProcessCpuCoresUsage,
