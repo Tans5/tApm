@@ -175,8 +175,8 @@ internal class CpuPowerCostMonitor(
                         val endSpeed = endCluster.powerCostDetails[speedIndex]
                         CpuClusterSpeedPowerCost(
                             speedInKhz = endSpeed.speedInKhz,
-                            activeTimeInHour = endCluster.activeTimeInHour - (startSpeed?.activeTimeInHour ?: 0.0),
-                            powerCostInMah = endCluster.powerCostInMah - (startSpeed?.powerCostInMah ?: 0.0)
+                            activeTimeInHour = endSpeed.activeTimeInHour - (startSpeed?.activeTimeInHour ?: 0.0),
+                            powerCostInMah = endSpeed.powerCostInMah - (startSpeed?.powerCostInMah ?: 0.0)
                         )
                     }.toList()
                 )
