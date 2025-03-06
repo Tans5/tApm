@@ -13,6 +13,7 @@ import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuClusterPowerCost
 import com.tans.tapm.model.CpuClusterSpeedPowerCost
 import com.tans.tapm.model.CpuPowerCost
+import java.util.concurrent.atomic.AtomicReference
 
 internal class CpuPowerCostMonitor(
     private val powerProfile: PowerProfile,
@@ -34,6 +35,10 @@ internal class CpuPowerCostMonitor(
         false
     }
 
+    private val lastPowerCostFromUptime: AtomicReference<CpuPowerCost?> by lazy {
+        AtomicReference(null)
+    }
+
     private val handler: Handler by lazy {
         object : Handler(Executors.bgHandlerThread.looper) {
             override fun handleMessage(msg: Message) {
@@ -42,9 +47,13 @@ internal class CpuPowerCostMonitor(
                         val buffer = cpuStateSnapshotCapture.readCpuStateSnapshotBuffer()!!
                         val cpuStateSnapshot = cpuStateSnapshotCapture.parseCpuStateSnapshotBuffer(buffer)
                         val powerCost = calculateCpuPowerCostFromUptime(cpuStateSnapshot)
-                        // TODO:
-
-
+                        val lastPowerCost = lastPowerCostFromUptime.get()
+                        if (lastPowerCost != null) {
+                            val durationCpuPowerCost = calculateCpuPowerCostBetweenTwoPoint(lastPowerCost, powerCost)
+                            tApmLog.d(TAG, durationCpuPowerCost.toString())
+                            updateMonitorData(durationCpuPowerCost)
+                        }
+                        lastPowerCostFromUptime.set(powerCost)
                         handler.removeMessages(CPU_POWER_COST_CHECK_MSG)
                         handler.sendEmptyMessageDelayed(CPU_POWER_COST_CHECK_MSG, monitorIntervalInMillis.get())
                     }
@@ -103,7 +112,7 @@ internal class CpuPowerCostMonitor(
                     CpuClusterSpeedPowerCost(
                         speedInKhz = speed,
                         activeTimeInHour = timeCostInHour,
-                        powerCodeInMah = p
+                        powerCostInMah = p
                     )
                 )
             }
@@ -144,6 +153,34 @@ internal class CpuPowerCostMonitor(
             powerCostDetails = clusterPowerCosts,
             powerCostInMah = cpuPowerInMha,
             currentProcessPowerCostInMah = currentProcessPowerCost
+        )
+    }
+
+
+    private fun calculateCpuPowerCostBetweenTwoPoint(start: CpuPowerCost, end: CpuPowerCost): CpuPowerCost {
+        return CpuPowerCost(
+            startTimeInMillis = start.startTimeInMillis,
+            endTimeInMillis = end.startTimeInMillis,
+            powerCostInMah = end.powerCostInMah - start.powerCostInMah,
+            currentProcessPowerCostInMah = end.currentProcessPowerCostInMah - start.currentProcessPowerCostInMah,
+            powerCostDetails = Array(end.powerCostDetails.size) { index ->
+                val endCluster = end.powerCostDetails[index]
+                val startCluster = start.powerCostDetails[index]
+                CpuClusterPowerCost(
+                    coreIndexRange = endCluster.coreIndexRange,
+                    activeTimeInHour = endCluster.activeTimeInHour - startCluster.activeTimeInHour,
+                    powerCostInMah = endCluster.powerCostInMah - startCluster.powerCostInMah,
+                    powerCostDetails = Array(endCluster.powerCostDetails.size) { speedIndex ->
+                        val startSpeed = startCluster.powerCostDetails.getOrNull(speedIndex)
+                        val endSpeed = endCluster.powerCostDetails[speedIndex]
+                        CpuClusterSpeedPowerCost(
+                            speedInKhz = endSpeed.speedInKhz,
+                            activeTimeInHour = endCluster.activeTimeInHour - (startSpeed?.activeTimeInHour ?: 0.0),
+                            powerCostInMah = endCluster.powerCostInMah - (startSpeed?.powerCostInMah ?: 0.0)
+                        )
+                    }.toList()
+                )
+            }.toList()
         )
     }
 

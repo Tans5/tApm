@@ -1,5 +1,6 @@
 package com.tans.tapm.internal
 
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 internal fun Long.toHumanReadableCpuSpeed(): String {
@@ -24,4 +25,25 @@ internal fun Long.jiffiesToHours(): Double {
 
 internal fun Long.millisToHours(): Double {
     return this / (60.0 * 60.0 * 1000.0)
+}
+
+private val sdfDateTimeMsThreadLocal: ThreadLocal<SimpleDateFormat> by lazy {
+    ThreadLocal()
+}
+
+private val sdfDateTimeMs: SimpleDateFormat
+    get() {
+        return sdfDateTimeMsThreadLocal.get().let {
+            if (it == null) {
+                val f = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+                sdfDateTimeMsThreadLocal.set(f)
+                f
+            } else {
+                it
+            }
+        }
+    }
+
+internal fun Long.formatDataTime(): String {
+    return sdfDateTimeMs.format(this)
 }

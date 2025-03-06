@@ -1,5 +1,6 @@
 package com.tans.tapm.model
 
+import com.tans.tapm.internal.formatDataTime
 import com.tans.tapm.internal.toHumanReadableCpuSpeed
 import com.tans.tapm.internal.toHumanReadableCpuUsage
 
@@ -30,7 +31,8 @@ data class CpuUsage(
     override fun toString(): String {
         val s = StringBuilder()
         s.appendLine("------------------------------------------")
-        s.appendLine("CpuAvgUsage: ${avgCpuUsage.toHumanReadableCpuUsage()}, CurrentProcessCpuAvgUsage: ${currentProcessAvgCpuUsage.toHumanReadableCpuUsage()}")
+        s.appendLine("StartTime=${startTimeInMillis.formatDataTime()}, EndTime=${endTimeInMillis.formatDataTime()}")
+        s.appendLine("CpuAvgUsage=${avgCpuUsage.toHumanReadableCpuUsage()}, CurrentProcessCpuAvgUsage=${currentProcessAvgCpuUsage.toHumanReadableCpuUsage()}")
         for (usage in cpuCoresUsage) {
             s.appendLine("  CpuIndex=${usage.coreIndex}, Usage=${usage.cpuUsage.toHumanReadableCpuUsage()}, ActiveTimeInJiffies=${usage.cpuActiveTimeInJiffies}, CurrentSpeed=${usage.currentCoreSpeedInKHz.toHumanReadableCpuSpeed()}, MinSpeed=${usage.coreSpec.minSpeedInKHz.toHumanReadableCpuSpeed()}, MaxSpeed=${usage.coreSpec.maxSpeedInKHz.toHumanReadableCpuSpeed()}")
         }
