@@ -1,11 +1,12 @@
 package com.tans.tapm.internal.monitors
 
 import com.tans.tapm.MonitorCallback
+import com.tans.tapm.internal.AppLifecycleOwner
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-interface Monitor<T : Any> {
+internal interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
 
     val isSupport: Boolean
 
@@ -19,6 +20,7 @@ interface Monitor<T : Any> {
         if (isSupport) {
             if (isRunning.compareAndSet(false, true)) {
                 onStart()
+                AppLifecycleOwner.addLifecycleObserver(this)
             }
         }
     }
@@ -35,6 +37,7 @@ interface Monitor<T : Any> {
         if (isSupport) {
             if (isRunning.compareAndSet(true ,false)) {
                 onStop()
+                AppLifecycleOwner.removeLifecycleObserver(this)
             }
         }
     }

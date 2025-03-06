@@ -2,6 +2,7 @@ package com.tans.tapm.internal
 
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -22,8 +23,15 @@ internal object Executors {
         Handler(bgHandlerThread.looper)
     }
 
-    val bgExecutors: Executor by lazy {
+    val mainHandler: Handler by lazy {
+        Handler(Looper.getMainLooper())
+    }
+
+    val bgExecutor: Executor by lazy {
         Executor { command -> bgHandler.post(command) }
     }
 
+    val mainExecutor: Executor by lazy {
+        Executor { command ->  mainHandler.post(command) }
+    }
 }

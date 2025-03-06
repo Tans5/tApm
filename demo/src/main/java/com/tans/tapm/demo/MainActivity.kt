@@ -13,7 +13,6 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
 
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MainActivityBinding.bind(contentView)
-
     }
 
 }

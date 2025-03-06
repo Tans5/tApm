@@ -7,7 +7,11 @@ internal fun Long.toHumanReadableCpuSpeed(): String {
     return String.format(Locale.US,"%.2f GHz", this.toDouble() / 1_000_000.0)
 }
 
-internal fun Double.toHumanReadableCpuUsage(): String {
+internal fun Double.toHumanReadablePercent(): String {
+    return String.format(Locale.US, "%.1f", this * 100.0) + " %"
+}
+
+internal fun Float.toHumanReadablePercent(): String {
     return String.format(Locale.US, "%.1f", this * 100.0) + " %"
 }
 

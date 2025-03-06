@@ -18,6 +18,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
 
     init {
         isInitSuccess = try {
+            closeAllRandomFiles()
             checkCpuSpeedAndTime()
             checkProcessCpuSpeedAndTime()
             checkCpuCoreIdleTime()

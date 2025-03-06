@@ -2,7 +2,7 @@ package com.tans.tapm.model
 
 import com.tans.tapm.internal.formatDataTime
 import com.tans.tapm.internal.toHumanReadableCpuSpeed
-import com.tans.tapm.internal.toHumanReadableCpuUsage
+import com.tans.tapm.internal.toHumanReadablePercent
 
 data class SingleCpuCoreUsage(
     val coreIndex: Int,
@@ -32,9 +32,9 @@ data class CpuUsage(
         val s = StringBuilder()
         s.appendLine("------------------------------------------")
         s.appendLine("StartTime=${startTimeInMillis.formatDataTime()}, EndTime=${endTimeInMillis.formatDataTime()}")
-        s.appendLine("CpuAvgUsage=${avgCpuUsage.toHumanReadableCpuUsage()}, CurrentProcessCpuAvgUsage=${currentProcessAvgCpuUsage.toHumanReadableCpuUsage()}")
+        s.appendLine("CpuAvgUsage=${avgCpuUsage.toHumanReadablePercent()}, CurrentProcessCpuAvgUsage=${currentProcessAvgCpuUsage.toHumanReadablePercent()}")
         for (usage in cpuCoresUsage) {
-            s.appendLine("  CpuIndex=${usage.coreIndex}, Usage=${usage.cpuUsage.toHumanReadableCpuUsage()}, ActiveTimeInJiffies=${usage.cpuActiveTimeInJiffies}, CurrentSpeed=${usage.currentCoreSpeedInKHz.toHumanReadableCpuSpeed()}, MinSpeed=${usage.coreSpec.minSpeedInKHz.toHumanReadableCpuSpeed()}, MaxSpeed=${usage.coreSpec.maxSpeedInKHz.toHumanReadableCpuSpeed()}")
+            s.appendLine("  CpuIndex=${usage.coreIndex}, Usage=${usage.cpuUsage.toHumanReadablePercent()}, ActiveTimeInJiffies=${usage.cpuActiveTimeInJiffies}, CurrentSpeed=${usage.currentCoreSpeedInKHz.toHumanReadableCpuSpeed()}, MinSpeed=${usage.coreSpec.minSpeedInKHz.toHumanReadableCpuSpeed()}, MaxSpeed=${usage.coreSpec.maxSpeedInKHz.toHumanReadableCpuSpeed()}")
         }
         s.appendLine("------------------------------------------")
         return s.toString()
