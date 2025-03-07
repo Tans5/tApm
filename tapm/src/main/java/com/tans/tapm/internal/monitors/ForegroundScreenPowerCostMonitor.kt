@@ -177,13 +177,13 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
             val durationInHour = (currentUptime - lastUpdateUptime).millisToHours()
             val powerCostInMah = (screenOnMa + brightness * screenFullMa) * durationInHour
             this.lastUpdateTime.set(currentUptime to currentSystemTime)
-            updateMonitorData(
-                ForegroundScreenPowerCost(
-                    startTimeInMillis = lastUpdateSystemTime,
-                    endTimeInMillis = currentSystemTime,
-                    powerCostInMah = powerCostInMah
-                )
+            val powerCost = ForegroundScreenPowerCost(
+                startTimeInMillis = lastUpdateSystemTime,
+                endTimeInMillis = currentSystemTime,
+                powerCostInMah = powerCostInMah
             )
+            tApmLog.d(TAG, powerCost.toString())
+            updateMonitorData(powerCost)
             handler.removeMessages(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG)
             handler.sendEmptyMessageDelayed(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG, monitorIntervalInMillis.get())
         }
