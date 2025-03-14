@@ -1,42 +1,39 @@
-package com.tans.tapm.internal.monitors
+package com.tans.tapm.monitors
 
 import android.os.Handler
 import android.os.Message
 import android.os.SystemClock
-import com.tans.tapm.internal.ComponentProfile
-import com.tans.tapm.internal.CpuStateSnapshotCapture
-import com.tans.tapm.internal.Executors
-import com.tans.tapm.internal.PowerProfile
+import com.tans.tapm.CpuStateSnapshotCapture
+import com.tans.tapm.Executors
+import com.tans.tapm.PowerProfile
+import com.tans.tapm.PowerProfile.Companion.ComponentProfile.CpuProfile
 import com.tans.tapm.internal.jiffiesToHours
 import com.tans.tapm.internal.millisToHours
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuClusterPowerCost
 import com.tans.tapm.model.CpuClusterSpeedPowerCost
 import com.tans.tapm.model.CpuPowerCost
+import com.tans.tapm.tApm
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.collections.iterator
 
-internal class CpuPowerCostMonitor(
-    private val powerProfile: PowerProfile,
-    private val cpuStateSnapshotCapture: CpuStateSnapshotCapture
-) : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERNAL) {
+class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERNAL) {
 
+    private var isSupportPrivate: Boolean = false
 
-    override val isSupport: Boolean = if (cpuStateSnapshotCapture.isInitSuccess) {
-        try {
-            check()
-            tApmLog.d(TAG, "Init CpuPowerCostMonitor success.")
-            true
-        } catch (e: Throwable) {
-            tApmLog.e(TAG, "Init CpuPowerMonitor fail.", e)
-            false
-        }
-    } else {
-        tApmLog.e(TAG, "Init CpuPowerMonitor fail.")
-        false
-    }
+    override val isSupport: Boolean
+        get() = isSupportPrivate
 
     private val lastPowerCostFromUptime: AtomicReference<CpuPowerCost?> by lazy {
         AtomicReference(null)
+    }
+
+    private val cpuStateSnapshotCapture: CpuStateSnapshotCapture by lazy {
+        apm.get()!!.cpuStateSnapshotCapture!!
+    }
+
+    private val powerProfile: PowerProfile by lazy {
+        apm.get()!!.powerProfile!!
     }
 
     private val handler: Handler by lazy {
@@ -51,7 +48,7 @@ internal class CpuPowerCostMonitor(
                         if (lastPowerCost != null) {
                             val durationCpuPowerCost = calculateCpuPowerCostBetweenTwoPoint(lastPowerCost, powerCost)
                             tApmLog.d(TAG, durationCpuPowerCost.toString())
-                            updateMonitorData(durationCpuPowerCost)
+                            dispatchMonitorData(durationCpuPowerCost)
                         }
                         lastPowerCostFromUptime.set(powerCost)
                         handler.removeMessages(CPU_POWER_COST_CHECK_MSG)
@@ -62,13 +59,28 @@ internal class CpuPowerCostMonitor(
         }
     }
 
-    override fun onStart() {
+    override fun onInit(apm: tApm) {
+        this.isSupportPrivate = if (apm.cpuStateSnapshotCapture != null && apm.powerProfile != null) {
+            try {
+                check()
+                tApmLog.d(TAG, "Init CpuPowerCostMonitor success.")
+                true
+            } catch (e: Throwable) {
+                tApmLog.e(TAG, "Init CpuPowerMonitor fail.", e)
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    override fun onStart(apm: tApm) {
         handler.removeMessages(CPU_POWER_COST_CHECK_MSG)
         handler.sendEmptyMessage(CPU_POWER_COST_CHECK_MSG)
         tApmLog.d(TAG, "CpuPowerCostMonitor started.")
     }
 
-    override fun onStop() {
+    override fun onStop(apm: tApm) {
         handler.removeMessages(CPU_POWER_COST_CHECK_MSG)
         tApmLog.d(TAG, "CpuPowerCostMonitor stopped.")
     }
@@ -97,7 +109,7 @@ internal class CpuPowerCostMonitor(
         val uptimeInHour = SystemClock.uptimeMillis().millisToHours()
 
         fun calculateClusterPowerCost(
-            cluster: ComponentProfile.CpuProfile.Companion.Cluster
+            cluster: CpuProfile.Companion.Cluster
         ): CpuClusterPowerCost {
             val coreState = cpuStateSnapshot.coreStates.find { it.coreIndex == cluster.coreIndexRange.first }!!
             val activeTimeInHour = coreState.cpuSpeedToTime.sumOf { it.second }.jiffiesToHours()

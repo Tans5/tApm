@@ -1,13 +1,12 @@
-package com.tans.tapm.internal.monitors
+package com.tans.tapm.monitors
 
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Message
 import android.os.SystemClock
 import android.provider.Settings
-import com.tans.tapm.internal.AppLifecycleOwner
-import com.tans.tapm.internal.Executors
-import com.tans.tapm.internal.PowerProfile
+import com.tans.tapm.AppLifecycleOwner
+import com.tans.tapm.Executors
 import com.tans.tapm.internal.millisToHours
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.internal.toHumanReadablePercent
@@ -15,39 +14,34 @@ import com.tans.tapm.model.ForegroundScreenPowerCost
 import com.tans.tapm.tApm
 import java.util.concurrent.atomic.AtomicReference
 
-internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerProfile) :
-    AbsMonitor<ForegroundScreenPowerCost>(
-        FOREGROUND_SCREEN_POWER_COST_CHECK_INTERNAL
-    ) {
+class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(FOREGROUND_SCREEN_POWER_COST_CHECK_INTERNAL) {
+
+    private var isSupportPrivate: Boolean = false
 
     override val isSupport: Boolean
+        get() = isSupportPrivate
 
-    private val screenOnMa: Float
-
-    private val screenFullMa: Float
-
-    init {
-        val screenProfile = powerProfile.screenProfile
-        screenOnMa = if (screenProfile.onMa > 0.0f) {
-            screenProfile.onMa
-        } else {
-            screenProfile.screensOnMa[0] ?: 0.0f
-        }
-        screenFullMa = if (screenProfile.fullMa > 0.0f) {
-            screenProfile.onMa
-        } else {
-            screenProfile.screensFullMa[0] ?: 0.0f
-        }
-        isSupport = if (screenOnMa == 0.0f && screenFullMa == 0.0f) {
-            tApmLog.e(TAG, "Init ForegroundScreenPowerCostMonitor fail.")
-            false
-        } else {
-            tApmLog.d(TAG, "Init ForegroundScreenPowerCostMonitor success.")
-            true
+    private val screenOnMa: Float by lazy {
+        apm.get()!!.powerProfile!!.screenProfile.let {
+            if (it.onMa > 0.0f) {
+                it.onMa
+            } else {
+                it.screensOnMa[0] ?: 0.0f
+            }
         }
     }
 
-    private val state :AtomicReference<State> = AtomicReference(State.Stopped)
+    private val screenFullMa: Float by lazy {
+        apm.get()!!.powerProfile!!.screenProfile.let {
+            if (it.fullMa > 0.0f) {
+                it.onMa
+            } else {
+                it.screensFullMa[0] ?: 0.0f
+            }
+        }
+    }
+
+    private val state: AtomicReference<State> = AtomicReference(State.Stopped)
 
     private val brightness: AtomicReference<Float?> = AtomicReference(null)
 
@@ -78,7 +72,20 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
         }
     }
 
-    override fun onStart() {
+    override fun onInit(apm: tApm) {
+        isSupportPrivate = if (apm.powerProfile != null) {
+            screenOnMa != 0.0f || screenFullMa != 0.0f
+        } else {
+            false
+        }
+        if (isSupportPrivate) {
+            tApmLog.d(TAG, "Init ForegroundScreenPowerCostMonitor success.")
+        } else {
+            tApmLog.e(TAG, "Init ForegroundScreenPowerCostMonitor fail.")
+        }
+    }
+
+    override fun onStart(apm: tApm) {
         if (hasBrightObserverPermission()) {
             if (AppLifecycleOwner.lifecycleState == AppLifecycleOwner.LifecycleState.Foreground) {
                 if (state.compareAndSet(State.Stopped, State.Running)) {
@@ -96,7 +103,7 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
         }
     }
 
-    override fun onStop() {
+    override fun onStop(apm: tApm) {
         state.set(State.Stopped)
         unregisterTasks()
         tApmLog.d(TAG, "ForegroundScreenPowerCostMonitor stopped.")
@@ -112,11 +119,13 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
                     }
                 }
             }
+
             State.Paused -> {
                 if (this.state.compareAndSet(State.Paused, State.Running)) {
                     registerTasks()
                 }
             }
+
             State.Running, State.Stopped -> {
                 tApmLog.e(TAG, "Wrong state: $state for onAppForeground() ")
             }
@@ -131,21 +140,25 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
                     unregisterTasks()
                 }
             }
-            else -> {  }
+
+            else -> {}
         }
     }
 
     private fun hasBrightObserverPermission(): Boolean {
-        return Settings.System.canWrite(tApm.getApplication())
+        return Settings.System.canWrite(application)
     }
 
     private fun registerTasks() {
 
         handler.removeMessages(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG)
-        handler.sendEmptyMessageDelayed(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG, monitorIntervalInMillis.get())
+        handler.sendEmptyMessageDelayed(
+            FOREGROUND_SCREEN_POWER_COST_CHECK_MSG,
+            monitorIntervalInMillis.get()
+        )
 
-        tApm.getApplication().contentResolver.unregisterContentObserver(brightnessObserver)
-        tApm.getApplication().contentResolver.registerContentObserver(
+        application.contentResolver.unregisterContentObserver(brightnessObserver)
+        application.contentResolver.registerContentObserver(
             Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS),
             false,
             brightnessObserver
@@ -156,14 +169,17 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
 
     private fun unregisterTasks() {
         handler.removeMessages(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG)
-        tApm.getApplication().contentResolver.unregisterContentObserver(brightnessObserver)
+        application.contentResolver.unregisterContentObserver(brightnessObserver)
         lastUpdateTime.set(null)
         brightness.set(null)
     }
 
     private fun getBrightness(): Float {
         // between 0 and 255
-        val brightness = Settings.System.getInt(tApm.getApplication().contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        val brightness = Settings.System.getInt(
+            application.contentResolver,
+            Settings.System.SCREEN_BRIGHTNESS
+        )
         return brightness.toFloat() / 255.0f
     }
 
@@ -183,9 +199,12 @@ internal class ForegroundScreenPowerCostMonitor(private val powerProfile: PowerP
                 powerCostInMah = powerCostInMah
             )
             tApmLog.d(TAG, powerCost.toString())
-            updateMonitorData(powerCost)
+            dispatchMonitorData(powerCost)
             handler.removeMessages(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG)
-            handler.sendEmptyMessageDelayed(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG, monitorIntervalInMillis.get())
+            handler.sendEmptyMessageDelayed(
+                FOREGROUND_SCREEN_POWER_COST_CHECK_MSG,
+                monitorIntervalInMillis.get()
+            )
         }
     }
 

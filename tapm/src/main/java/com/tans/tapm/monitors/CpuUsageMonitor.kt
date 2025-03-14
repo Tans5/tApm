@@ -1,21 +1,28 @@
-package com.tans.tapm.internal.monitors
+package com.tans.tapm.monitors
 
 import android.os.Handler
 import android.os.Message
-import com.tans.tapm.internal.CpuStateSnapshotCapture
-import com.tans.tapm.internal.CpuStateSnapshotCapture.Companion.CpuStateSnapshot
-import com.tans.tapm.internal.Executors
+import com.tans.tapm.CpuStateSnapshotCapture
+import com.tans.tapm.CpuStateSnapshotCapture.Companion.CpuStateSnapshot
+import com.tans.tapm.Executors
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuUsage
 import com.tans.tapm.model.ProgressSingleCpuCoreUsage
 import com.tans.tapm.model.SingleCpuCoreUsage
+import com.tans.tapm.tApm
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.collections.iterator
 
-internal class CpuUsageMonitor(
-    private val cpuStateSnapshotCapture: CpuStateSnapshotCapture
-) : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CPU_USAGE_CHECK_INTERNAL) {
+class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CPU_USAGE_CHECK_INTERNAL) {
 
-    override val isSupport: Boolean = cpuStateSnapshotCapture.isInitSuccess
+    private val cpuStateSnapshotCapture: CpuStateSnapshotCapture by lazy {
+        apm.get()!!.cpuStateSnapshotCapture!!
+    }
+
+    private var isSupportPrivate: Boolean = false
+
+    override val isSupport: Boolean
+        get() = isSupportPrivate
 
     private val lastCpuStateSnapshot: AtomicReference<CpuStateSnapshot?> = AtomicReference(null)
 
@@ -37,7 +44,7 @@ internal class CpuUsageMonitor(
                 tApmLog.d(TAG, cpuUsage.toString())
                 lastCpuStateSnapshot.set(currentCpuState)
                 sendNextTimeCheckTask()
-                updateMonitorData(cpuUsage)
+                dispatchMonitorData(cpuUsage)
             }
 
 
@@ -49,14 +56,17 @@ internal class CpuUsageMonitor(
         }
     }
 
+    override fun onInit(apm: tApm) {
+        isSupportPrivate = apm.cpuStateSnapshotCapture != null
+    }
 
-    override fun onStart() {
+    override fun onStart(apm: tApm) {
         handler.removeMessages(CPU_USAGE_CHECK_MSG)
         handler.sendEmptyMessage(CPU_USAGE_CHECK_MSG)
         tApmLog.d(TAG, "CpuUsageMonitor started.")
     }
 
-    override fun onStop() {
+    override fun onStop(apm: tApm) {
         handler.removeMessages(CPU_USAGE_CHECK_MSG)
         tApmLog.d(TAG, "CpuUsageMonitor stopped.")
     }

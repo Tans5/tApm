@@ -1,23 +1,29 @@
-package com.tans.tapm.internal
+package com.tans.tapm
 
 import android.os.Process
 import android.system.Os
 import android.system.OsConstants
+import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuSpec
 import java.io.File
 import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 
-internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
+class CpuStateSnapshotCapture(powerProfile: PowerProfile?) {
+
+    val cpuCoreCount: Int = powerProfile?.cpuProfile?.coreCount ?: Runtime.getRuntime().availableProcessors()
 
     val isInitSuccess: Boolean
 
     val cpuSpeedSpecs: List<CpuSpec> by lazy {
-        readCpuCoresSpec(powerProfile.cpuProfile.coreCount)
+        readCpuCoresSpec(cpuCoreCount)
     }
 
     init {
         isInitSuccess = try {
+            if (cpuCoreCount <= 0) {
+                error("Wrong cpu core count: $cpuCoreCount")
+            }
             closeAllRandomFiles()
             checkCpuSpeedAndTime()
             checkProcessCpuSpeedAndTime()
@@ -36,7 +42,6 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
     @Synchronized
     fun readCpuStateSnapshotBuffer(): CpuStateSnapshotBuffer? {
         return if (isInitSuccess) {
-            val cpuCoreCount = powerProfile.cpuProfile.coreCount
             val currentProcessCpuSpeedToTimeBuffer = readProcessCpuCoreTimeBuffer(Process.myPid())
             val coreStateBuffers = mutableListOf<SingleCoreStateSnapshotBuffer>()
             repeat(cpuCoreCount) { coreIndex ->
@@ -78,8 +83,7 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
     }
 
     private fun checkCpuSpeedAndTime() {
-        val cpuProfile = powerProfile.cpuProfile
-        repeat(cpuProfile.coreCount) { coreIndex ->
+        repeat(cpuCoreCount) { coreIndex ->
             val b = readCpuCoreTimeBuffer(coreIndex)
             parseCpuCoreTimeBuffer(b)
         }
@@ -91,14 +95,14 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
     }
 
     private fun checkCpuCoreIdleTime() {
-        repeat(powerProfile.cpuProfile.coreCount) { coreIndex ->
+        repeat(cpuCoreCount) { coreIndex ->
             val b = readCpuCoreIdleTimeBuffer(coreIndex)
             parseCpuCoreIdleTime(b)
         }
     }
 
     private fun checkCpuCoreSpeed() {
-        repeat(powerProfile.cpuProfile.coreCount) { coreIndex ->
+        repeat(cpuCoreCount) { coreIndex ->
             val b = readCpuCoreSpeedBuffer(coreIndex)
             parseCpuCoreSpeed(b)
         }
@@ -121,14 +125,14 @@ internal class CpuStateSnapshotCapture(private val powerProfile: PowerProfile) {
             val currentProcessCpuSpeedToTime: Map<Int, List<Pair<Long, Long>>>
         )
 
-        data class SingleCoreStateSnapshotBuffer(
+        class SingleCoreStateSnapshotBuffer(
             val coreIndex: Int,
             val currentCoreSpeedBuffer: ByteArray,
             val cpuSpeedToTimeBuffer: ByteArray,
             val cpuIdleTimeBuffer: List<ByteArray>
         )
 
-        data class CpuStateSnapshotBuffer(
+        class CpuStateSnapshotBuffer(
             val createTime: Long,
             val coreStateBuffers: List<SingleCoreStateSnapshotBuffer>,
             val currentProcessCpuSpeedToTimeBuffer: ByteArray

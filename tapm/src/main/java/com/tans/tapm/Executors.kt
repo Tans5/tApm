@@ -1,4 +1,4 @@
-package com.tans.tapm.internal
+package com.tans.tapm
 
 import android.os.Handler
 import android.os.HandlerThread
@@ -6,11 +6,11 @@ import android.os.Looper
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal object Executors {
+object Executors {
 
     val bgHandlerThread: HandlerThread by lazy {
         val isPrepared = AtomicBoolean(false)
-        val t = object : HandlerThread("tApm_BgThread", Thread.NORM_PRIORITY) {
+        val t = object : HandlerThread("tApm_BgThread", NORM_PRIORITY) {
             override fun onLooperPrepared() {
                 isPrepared.set(true)
             }

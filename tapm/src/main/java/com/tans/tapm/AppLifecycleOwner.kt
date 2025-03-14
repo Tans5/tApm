@@ -1,21 +1,22 @@
-package com.tans.tapm.internal
+package com.tans.tapm
 
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import java.util.concurrent.LinkedBlockingQueue
 
-internal object AppLifecycleOwner {
+object AppLifecycleOwner {
 
     private var startedActivityCount: Int = 0
 
     var lifecycleState: LifecycleState = LifecycleState.Background
         private set
 
-    private val observers: ArrayList<AppLifecycleObserver> by lazy {
-        ArrayList()
+    private val observers: LinkedBlockingQueue<AppLifecycleObserver> by lazy {
+        LinkedBlockingQueue()
     }
 
-    fun init(app: Application) {
+    internal fun init(app: Application) {
         app.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityStarted(activity: Activity) {
@@ -38,21 +39,15 @@ internal object AppLifecycleOwner {
     }
 
     fun addLifecycleObserver(o: AppLifecycleObserver) {
-        synchronized(this) {
-            if (!observers.contains(o)) {
-                observers.add(o)
-                when (lifecycleState) {
-                    LifecycleState.Foreground -> o.onAppForeground()
-                    LifecycleState.Background -> o.onAppBackground()
-                }
-            }
+        observers.add(o)
+        when (lifecycleState) {
+            LifecycleState.Foreground -> o.onAppForeground()
+            LifecycleState.Background -> o.onAppBackground()
         }
     }
 
     fun removeLifecycleObserver(o: AppLifecycleObserver) {
-        synchronized(this) {
-            observers.remove(o)
-        }
+        observers.remove(o)
     }
 
     private fun checkAndUpdateLifecycleState() {
