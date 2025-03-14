@@ -4,10 +4,14 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicReference
 
 object AppLifecycleOwner {
 
     private var startedActivityCount: Int = 0
+    private val apm: AtomicReference<tApm?> by lazy {
+        AtomicReference(null)
+    }
 
     var lifecycleState: LifecycleState = LifecycleState.Background
         private set
@@ -16,8 +20,9 @@ object AppLifecycleOwner {
         LinkedBlockingQueue()
     }
 
-    internal fun init(app: Application) {
-        app.registerActivityLifecycleCallbacks(
+    internal fun init(apm: tApm) {
+        this.apm.set(apm)
+        apm.application.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityStarted(activity: Activity) {
                     startedActivityCount ++
@@ -64,20 +69,16 @@ object AppLifecycleOwner {
     private fun dispatchLifecycleState() {
         when (lifecycleState) {
             LifecycleState.Foreground -> {
-                Executors.bgExecutor.execute {
-                    synchronized(this@AppLifecycleOwner) {
-                        for (o in observers) {
-                            o.onAppForeground()
-                        }
+                apm.get()!!.executor.executeOnBackgroundThread {
+                    for (o in observers) {
+                        o.onAppForeground()
                     }
                 }
             }
             LifecycleState.Background -> {
-                Executors.bgExecutor.execute {
-                    synchronized(this@AppLifecycleOwner) {
-                        for (o in observers) {
-                            o.onAppBackground()
-                        }
+                apm.get()!!.executor.executeOnBackgroundThread {
+                    for (o in observers) {
+                        o.onAppBackground()
                     }
                 }
             }

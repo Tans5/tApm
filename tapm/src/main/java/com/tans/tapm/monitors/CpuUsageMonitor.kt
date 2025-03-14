@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Message
 import com.tans.tapm.CpuStateSnapshotCapture
 import com.tans.tapm.CpuStateSnapshotCapture.Companion.CpuStateSnapshot
-import com.tans.tapm.Executors
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuUsage
 import com.tans.tapm.model.ProgressSingleCpuCoreUsage
@@ -19,6 +18,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
         apm.get()!!.cpuStateSnapshotCapture!!
     }
 
+    @Volatile
     private var isSupportPrivate: Boolean = false
 
     override val isSupport: Boolean
@@ -27,7 +27,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
     private val lastCpuStateSnapshot: AtomicReference<CpuStateSnapshot?> = AtomicReference(null)
 
     private val handler: Handler by lazy {
-        object : Handler(Executors.bgHandlerThread.looper) {
+        object : Handler(executor.getBackgroundThreadLooper()) {
 
             override fun handleMessage(msg: Message) {
                 val lastCpuState = lastCpuStateSnapshot.get()

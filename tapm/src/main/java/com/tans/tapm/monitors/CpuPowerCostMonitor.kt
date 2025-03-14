@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Message
 import android.os.SystemClock
 import com.tans.tapm.CpuStateSnapshotCapture
-import com.tans.tapm.Executors
 import com.tans.tapm.PowerProfile
 import com.tans.tapm.PowerProfile.Companion.ComponentProfile.CpuProfile
 import com.tans.tapm.internal.jiffiesToHours
@@ -19,6 +18,7 @@ import kotlin.collections.iterator
 
 class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERNAL) {
 
+    @Volatile
     private var isSupportPrivate: Boolean = false
 
     override val isSupport: Boolean
@@ -37,7 +37,7 @@ class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERN
     }
 
     private val handler: Handler by lazy {
-        object : Handler(Executors.bgHandlerThread.looper) {
+        object : Handler(executor.getBackgroundThreadLooper()) {
             override fun handleMessage(msg: Message) {
                 when (msg.what) {
                     CPU_POWER_COST_CHECK_MSG -> {

@@ -23,6 +23,7 @@ class tApm private constructor(
         private set
 
     init {
+        AppLifecycleOwner.init(this)
         executor.executeOnBackgroundThread {
             powerProfile = PowerProfile.parsePowerProfile(application)
             if (powerProfile == null) {

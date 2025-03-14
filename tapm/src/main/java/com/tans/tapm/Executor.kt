@@ -9,7 +9,7 @@ class Executor(backgroundThread: HandlerThread?) {
 
     private val backgroundThread: HandlerThread = backgroundThread ?: defaultBackgroundThread
 
-    private val backgroundThreadHandler: Handler
+    val backgroundThreadHandler: Handler
 
     private val mainThreadHandler: Handler by lazy {
         Handler(Looper.getMainLooper())

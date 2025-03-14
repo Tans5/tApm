@@ -6,7 +6,6 @@ import android.os.Message
 import android.os.SystemClock
 import android.provider.Settings
 import com.tans.tapm.AppLifecycleOwner
-import com.tans.tapm.Executors
 import com.tans.tapm.internal.millisToHours
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.internal.toHumanReadablePercent
@@ -16,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(FOREGROUND_SCREEN_POWER_COST_CHECK_INTERNAL) {
 
+    @Volatile
     private var isSupportPrivate: Boolean = false
 
     override val isSupport: Boolean
@@ -49,7 +49,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
     private val lastUpdateTime: AtomicReference<Pair<Long, Long>?> = AtomicReference(null)
 
     private val brightnessObserver: ContentObserver by lazy {
-        object : ContentObserver(Executors.bgHandler) {
+        object : ContentObserver(executor.backgroundThreadHandler) {
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
                 val brightness = getBrightness()
@@ -61,7 +61,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
     }
 
     private val handler: Handler by lazy {
-        object : Handler(Executors.bgHandlerThread.looper) {
+        object : Handler(executor.getBackgroundThreadLooper()) {
             override fun handleMessage(msg: Message) {
                 when (msg.what) {
                     FOREGROUND_SCREEN_POWER_COST_CHECK_MSG -> {

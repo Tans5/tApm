@@ -1,6 +1,7 @@
 package com.tans.tapm.monitors
 
 import android.app.Application
+import com.tans.tapm.Executor
 import com.tans.tapm.Monitor
 import com.tans.tapm.tApm
 import java.util.concurrent.LinkedBlockingQueue
@@ -12,6 +13,9 @@ abstract class AbsMonitor<T : Any>(defaultMonitorIntervalInMillis: Long) : Monit
     override val apm: AtomicReference<tApm?> = AtomicReference(null)
     override val application: Application by lazy {
         apm.get()!!.application
+    }
+    override val executor: Executor by lazy {
+        apm.get()!!.executor
     }
     override val isRunning: AtomicBoolean = AtomicBoolean(false)
     override val monitorIntervalInMillis: AtomicLong = AtomicLong(defaultMonitorIntervalInMillis)

@@ -1,6 +1,7 @@
 package com.tans.tapm
 
 import android.app.Application
+import android.os.Looper
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -11,6 +12,8 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
     val apm: AtomicReference<tApm?>
 
     val application: Application
+
+    val executor: Executor
 
     val isSupport: Boolean
 
@@ -69,8 +72,16 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
     }
 
     fun dispatchMonitorData(t: T) {
-        for (c in monitorDataObservers) {
-            c.onMonitorDataUpdate(t)
+        if (Looper.getMainLooper() === Looper.myLooper()) {
+            executor.executeOnBackgroundThread {
+                for (c in monitorDataObservers) {
+                    c.onMonitorDataUpdate(t)
+                }
+            }
+        } else {
+            for (c in monitorDataObservers) {
+                c.onMonitorDataUpdate(t)
+            }
         }
     }
 
