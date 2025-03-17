@@ -26,8 +26,6 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
     fun init(apm: tApm) {
         if (this.apm.compareAndSet(null, apm)) {
             onInit(apm)
-        } else {
-            error("${this::class.java} already invoked init().")
         }
     }
 
@@ -63,16 +61,17 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
 
     fun onStop(apm: tApm)
 
-    fun addMonitorObserver(callback: MonitorDataObserver<T>) {
-        this.monitorDataObservers.add(callback)
+    fun addMonitorObserver(o: MonitorDataObserver<T>) {
+        this.monitorDataObservers.add(o)
     }
 
-    fun removeMonitorObserver(callback: MonitorDataObserver<T>) {
-        this.monitorDataObservers.remove(callback)
+    fun removeMonitorObserver(o: MonitorDataObserver<T>) {
+        this.monitorDataObservers.remove(o)
     }
 
-    fun dispatchMonitorData(t: T) {
-        if (Looper.getMainLooper() === Looper.myLooper()) {
+    fun dispatchMonitorData(t: T, dispatchOnBackgroundThread: Boolean = true) {
+
+        if (dispatchOnBackgroundThread && Looper.getMainLooper() === Looper.myLooper()) {
             executor.executeOnBackgroundThread {
                 for (c in monitorDataObservers) {
                     c.onMonitorDataUpdate(t)

@@ -1,8 +1,10 @@
 package com.tans.tapm.monitors
 
 import android.app.Application
+import com.tans.tapm.CpuStateSnapshotCapture
 import com.tans.tapm.Executor
 import com.tans.tapm.Monitor
+import com.tans.tapm.PowerProfile
 import com.tans.tapm.tApm
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -20,4 +22,10 @@ abstract class AbsMonitor<T : Any>(defaultMonitorIntervalInMillis: Long) : Monit
     override val isRunning: AtomicBoolean = AtomicBoolean(false)
     override val monitorIntervalInMillis: AtomicLong = AtomicLong(defaultMonitorIntervalInMillis)
     override val monitorDataObservers: LinkedBlockingQueue<Monitor.MonitorDataObserver<T>> = LinkedBlockingQueue()
+
+    val cpuStateSnapshotCapture: CpuStateSnapshotCapture?
+        get() = apm.get()?.cpuStateSnapshotCapture
+
+    val powerProfile: PowerProfile?
+        get() = apm.get()?.powerProfile
 }

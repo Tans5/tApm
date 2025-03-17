@@ -2,7 +2,6 @@ package com.tans.tapm.monitors
 
 import android.os.Handler
 import android.os.Message
-import com.tans.tapm.CpuStateSnapshotCapture
 import com.tans.tapm.CpuStateSnapshotCapture.Companion.CpuStateSnapshot
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuUsage
@@ -14,15 +13,9 @@ import kotlin.collections.iterator
 
 class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CPU_USAGE_CHECK_INTERNAL) {
 
-    private val cpuStateSnapshotCapture: CpuStateSnapshotCapture by lazy {
-        apm.get()!!.cpuStateSnapshotCapture!!
-    }
-
-    @Volatile
-    private var isSupportPrivate: Boolean = false
 
     override val isSupport: Boolean
-        get() = isSupportPrivate
+        get() = cpuStateSnapshotCapture != null
 
     private val lastCpuStateSnapshot: AtomicReference<CpuStateSnapshot?> = AtomicReference(null)
 
@@ -31,9 +24,9 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
 
             override fun handleMessage(msg: Message) {
                 val lastCpuState = lastCpuStateSnapshot.get()
-                val currentCpuStateBuffer = cpuStateSnapshotCapture.readCpuStateSnapshotBuffer()!!
+                val currentCpuStateBuffer = cpuStateSnapshotCapture!!.readCpuStateSnapshotBuffer()!!
                 val currentCpuState =
-                    cpuStateSnapshotCapture.parseCpuStateSnapshotBuffer(currentCpuStateBuffer)
+                    cpuStateSnapshotCapture!!.parseCpuStateSnapshotBuffer(currentCpuStateBuffer)
                 if (lastCpuState == null) {
                     lastCpuStateSnapshot.set(currentCpuState)
                     sendNextTimeCheckTask()
@@ -57,7 +50,11 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
     }
 
     override fun onInit(apm: tApm) {
-        isSupportPrivate = apm.cpuStateSnapshotCapture != null
+        if (isSupport) {
+            tApmLog.d(TAG, "Init CpuUsageMonitor success.")
+        } else {
+            tApmLog.e(TAG, "Init CpuUsageMonitor fail.")
+        }
     }
 
     override fun onStart(apm: tApm) {
@@ -86,7 +83,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
         // All processes cpu cores usages.
         val cpuCoreUsages = mutableListOf<SingleCpuCoreUsage>()
         for (ns in next.coreStates) {
-            val coreSpec = cpuStateSnapshotCapture.cpuSpeedSpecs[ns.coreIndex]
+            val coreSpec = cpuStateSnapshotCapture!!.cpuSpeedSpecs[ns.coreIndex]
             val ps = previous.coreStates[ns.coreIndex]
             val cpuIdleTimeInJiffies = ns.cpuIdleTime - ps.cpuIdleTime
             var cpuWorkTimeInJiffies = 0L
@@ -112,11 +109,11 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
             )
         }
         val maxCpuSpeed =
-            cpuStateSnapshotCapture.cpuSpeedSpecs.maxBy { it.maxSpeedInKHz }.maxSpeedInKHz
+            cpuStateSnapshotCapture!!.cpuSpeedSpecs.maxBy { it.maxSpeedInKHz }.maxSpeedInKHz
         var avgCpuUsageNum = 0.0
         var avgCpuUsageDen = 0.0
         for (usage in cpuCoreUsages) {
-            val coreSpec = cpuStateSnapshotCapture.cpuSpeedSpecs[usage.coreIndex]
+            val coreSpec = cpuStateSnapshotCapture!!.cpuSpeedSpecs[usage.coreIndex]
             avgCpuUsageDen += coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble()
             avgCpuUsageNum += coreSpec.maxSpeedInKHz.toDouble() / maxCpuSpeed.toDouble() * usage.cpuUsage
         }

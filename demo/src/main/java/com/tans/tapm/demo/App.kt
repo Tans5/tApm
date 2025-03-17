@@ -7,6 +7,8 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        tApm.Companion.Builder(this).build()
+        tApm.Companion.Builder(this)
+
+            .build()
     }
 }

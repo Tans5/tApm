@@ -47,6 +47,21 @@ class tApm private constructor(
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    fun <M : Monitor<D>, D: Any> addMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+        (monitors[monitorClass] as? M)?.addMonitorObserver(observer)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <M : Monitor<D>, D: Any> removeMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+        (monitors[monitorClass] as? M)?.removeMonitorObserver(observer)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <M : Monitor<D>, D: Any> getMonitor(monitorClass: Class<M>): M? {
+        return (monitors[monitorClass] as? M)
+    }
+
     companion object {
 
         private const val TAG = "tApm"
@@ -71,6 +86,16 @@ class tApm private constructor(
             fun removeMonitor(monitorClass: Class<out Monitor<*>>): Builder {
                 monitors.remove(monitorClass)
                 return this
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            fun <M : Monitor<D>, D: Any> addMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+                (monitors[monitorClass] as? M)?.addMonitorObserver(observer)
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            fun <M : Monitor<D>, D: Any> removeMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+                (monitors[monitorClass] as? M)?.removeMonitorObserver(observer)
             }
 
             fun setBackgroundThread(backgroundThread: HandlerThread): Builder {

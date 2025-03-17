@@ -15,14 +15,18 @@ import java.util.concurrent.atomic.AtomicReference
 
 class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(FOREGROUND_SCREEN_POWER_COST_CHECK_INTERNAL) {
 
-    @Volatile
-    private var isSupportPrivate: Boolean = false
-
     override val isSupport: Boolean
-        get() = isSupportPrivate
+        get() {
+            val powerProfile = this.apm.get()?.powerProfile
+            return if (powerProfile == null) {
+                false
+            } else {
+                screenOnMa != 0.0f || screenFullMa != 0.0f
+            }
+        }
 
     private val screenOnMa: Float by lazy {
-        apm.get()!!.powerProfile!!.screenProfile.let {
+        powerProfile!!.screenProfile.let {
             if (it.onMa > 0.0f) {
                 it.onMa
             } else {
@@ -32,7 +36,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
     }
 
     private val screenFullMa: Float by lazy {
-        apm.get()!!.powerProfile!!.screenProfile.let {
+        powerProfile!!.screenProfile.let {
             if (it.fullMa > 0.0f) {
                 it.onMa
             } else {
@@ -73,12 +77,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
     }
 
     override fun onInit(apm: tApm) {
-        isSupportPrivate = if (apm.powerProfile != null) {
-            screenOnMa != 0.0f || screenFullMa != 0.0f
-        } else {
-            false
-        }
-        if (isSupportPrivate) {
+        if (isSupport) {
             tApmLog.d(TAG, "Init ForegroundScreenPowerCostMonitor success.")
         } else {
             tApmLog.e(TAG, "Init ForegroundScreenPowerCostMonitor fail.")
