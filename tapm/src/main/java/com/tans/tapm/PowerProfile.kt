@@ -633,7 +633,7 @@ class PowerProfile private constructor(
                                 val t = try {
                                     parser.text.toFloat()
                                 } catch (e: Throwable) {
-                                    tApmLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.")
+                                    tApmLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.", e)
                                     0.0f
                                 }
                                 array.add(t)
@@ -668,7 +668,7 @@ class PowerProfile private constructor(
                             val t = try {
                                 parser.text.toFloat()
                             } catch (e: Throwable) {
-                                tApmLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.")
+                                tApmLog.e(TAG, "Wrong text ${parser.text} can't parse to float value.", e)
                                 0.0f
                             }
                             tApmLog.d(TAG, "<item name=\"$attrName\">${parser.text}</item>")

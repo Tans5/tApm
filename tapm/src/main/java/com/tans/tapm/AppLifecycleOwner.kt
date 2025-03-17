@@ -16,7 +16,7 @@ object AppLifecycleOwner {
     var lifecycleState: LifecycleState = LifecycleState.Background
         private set
 
-    private val observers: LinkedBlockingQueue<AppLifecycleObserver> by lazy {
+    private val observers: LinkedBlockingQueue<ObserverWrapper> by lazy {
         LinkedBlockingQueue()
     }
 
@@ -44,15 +44,19 @@ object AppLifecycleOwner {
     }
 
     fun addLifecycleObserver(o: AppLifecycleObserver) {
-        observers.add(o)
-        when (lifecycleState) {
-            LifecycleState.Foreground -> o.onAppForeground()
-            LifecycleState.Background -> o.onAppBackground()
+        val wrapper = ObserverWrapper(o)
+        val s = lifecycleState
+        if (wrapper.lastDispatchState.compareAndSet(null, s)) {
+            when (s) {
+                LifecycleState.Foreground -> wrapper.observer.onAppForeground()
+                LifecycleState.Background -> wrapper.observer.onAppBackground()
+            }
         }
+        observers.add(wrapper)
     }
 
     fun removeLifecycleObserver(o: AppLifecycleObserver) {
-        observers.remove(o)
+        observers.removeIf { it.observer === o }
     }
 
     private fun checkAndUpdateLifecycleState() {
@@ -71,14 +75,18 @@ object AppLifecycleOwner {
             LifecycleState.Foreground -> {
                 apm.get()!!.executor.executeOnBackgroundThread {
                     for (o in observers) {
-                        o.onAppForeground()
+                        if (o.lastDispatchState.compareAndSet(LifecycleState.Background, LifecycleState.Foreground)) {
+                            o.observer.onAppForeground()
+                        }
                     }
                 }
             }
             LifecycleState.Background -> {
                 apm.get()!!.executor.executeOnBackgroundThread {
                     for (o in observers) {
-                        o.onAppBackground()
+                        if (o.lastDispatchState.compareAndSet(LifecycleState.Foreground, LifecycleState.Background)) {
+                            o.observer.onAppBackground()
+                        }
                     }
                 }
             }
@@ -95,6 +103,11 @@ object AppLifecycleOwner {
 
         }
     }
+
+    private data class ObserverWrapper(
+        val observer: AppLifecycleObserver,
+        val lastDispatchState: AtomicReference<LifecycleState?> = AtomicReference()
+    )
 
     enum class LifecycleState {
         Foreground,

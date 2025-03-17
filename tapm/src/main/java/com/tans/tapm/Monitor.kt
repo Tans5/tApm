@@ -74,17 +74,17 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
         if (dispatchOnBackgroundThread && Looper.getMainLooper() === Looper.myLooper()) {
             executor.executeOnBackgroundThread {
                 for (c in monitorDataObservers) {
-                    c.onMonitorDataUpdate(t)
+                    c.onMonitorDataUpdate(t, apm.get()!!)
                 }
             }
         } else {
             for (c in monitorDataObservers) {
-                c.onMonitorDataUpdate(t)
+                c.onMonitorDataUpdate(t, apm.get()!!)
             }
         }
     }
 
     interface MonitorDataObserver<T : Any> {
-        fun onMonitorDataUpdate(t: T)
+        fun onMonitorDataUpdate(t: T, apm: tApm)
     }
 }

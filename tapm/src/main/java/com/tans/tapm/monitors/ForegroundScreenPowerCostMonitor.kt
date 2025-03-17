@@ -126,7 +126,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
             }
 
             State.Running, State.Stopped -> {
-                tApmLog.e(TAG, "Wrong state: $state for onAppForeground() ")
+                tApmLog.e(TAG, "Wrong state: $state for onAppForeground().")
             }
         }
     }

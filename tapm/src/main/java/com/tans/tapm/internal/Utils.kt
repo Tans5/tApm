@@ -24,6 +24,16 @@ internal fun Double.toHumanReadablePower(): String {
     return String.format(Locale.US, "%.2f mAh", this)
 }
 
+internal fun Long.toHumanReadableMemorySize(): String {
+    return when(this) {
+        in Long.MIN_VALUE until 0L -> this.toString()
+        in 0L until 1024L -> "$this B"
+        in 1024L until 1024L * 1024L -> "${String.format(Locale.US, "%.2f", this.toDouble() / 1024.0)} KB"
+        in 1024L * 1024L until 1024L * 1024L * 1024L -> "${String.format(Locale.US, "%.2f", this.toDouble() / (1024.0 * 1024.0))} MB"
+        else -> "${String.format(Locale.US, "%.2f", this.toDouble() / (1024.0 * 1024.0 * 1024.0))} GB"
+    }
+}
+
 internal fun Long.jiffiesToHours(): Double {
     return this * CpuStateSnapshotCapture.oneJiffyInMillis.toDouble() / (60.0 * 60.0 * 1000.0)
 }
