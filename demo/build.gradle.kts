@@ -51,7 +51,7 @@ dependencies {
     implementation(libs.coroutines.android)
 
     implementation(libs.tuiutils)
-    implementation(project(":tapm"))
+    implementation(project(":tapm-core"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

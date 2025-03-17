@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "tApm"
 include(":demo")
-include(":tapm")
+include(":tapm-core")
