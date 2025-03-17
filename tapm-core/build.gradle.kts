@@ -19,7 +19,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
+        }
     }
+
+    externalNativeBuild {
+        cmake {
+            path("src/main/cpp/CMakeLists.txt")
+            version = properties["CMAKE_VERSION"].toString()
+        }
+    }
+
+    ndkVersion = properties["NDK_VERSION"].toString()
 
     buildTypes {
         release {
@@ -43,6 +56,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.annotaion)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

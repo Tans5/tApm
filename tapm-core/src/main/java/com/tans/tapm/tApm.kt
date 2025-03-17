@@ -125,6 +125,10 @@ class tApm private constructor(
 
         private const val TAG = "tApm"
 
+        init {
+            System.loadLibrary("tapm")
+        }
+
         private val isCreatedApmInstance: AtomicBoolean = AtomicBoolean(false)
 
         class Builder(private val application: Application) {
