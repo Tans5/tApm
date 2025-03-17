@@ -9,13 +9,15 @@ import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.DeviceInfo
+import com.tans.tapm.monitors.JavaCrashMonitor
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("ClassName")
 class tApm private constructor(
     val application: Application,
     val monitors: Map<Class<out Monitor<*>>, Monitor<*>>,
-    val executor: Executor
+    val executor: Executor,
+    val initCallback: InitCallback?
 ) {
     @Volatile
     var powerProfile: PowerProfile? = null
@@ -46,12 +48,18 @@ class tApm private constructor(
             tApmLog.d(TAG, deviceInfo.toString())
             for ((_, v) in monitors) {
                 v.init(this)
+                if (v.isSupport) {
+                    initCallback?.onSupportMonitor(v)
+                } else {
+                    initCallback?.onUnsupportMonitor(v)
+                }
             }
             for ((_, v) in monitors) {
                 if (v.isSupport) {
                     v.start()
                 }
             }
+            initCallback?.onInitFinish()
             tApmLog.d(TAG, "tApm inited.")
         }
     }
@@ -122,12 +130,15 @@ class tApm private constructor(
         class Builder(private val application: Application) {
 
             private val monitors: MutableMap<Class<out Monitor<*>>, Monitor<*>> = mutableMapOf(
+                JavaCrashMonitor::class.java to JavaCrashMonitor(),
                 CpuUsageMonitor::class.java to CpuUsageMonitor(),
                 CpuPowerCostMonitor::class.java to CpuPowerCostMonitor(),
                 ForegroundScreenPowerCostMonitor::class.java to ForegroundScreenPowerCostMonitor()
             )
 
             private var backgroundThread: HandlerThread? = null
+
+            private var initCallback: InitCallback? = null
 
             fun addMonitor(monitor: Monitor<*>): Builder {
                 monitors[monitor::class.java] = monitor
@@ -140,17 +151,24 @@ class tApm private constructor(
             }
 
             @Suppress("UNCHECKED_CAST")
-            fun <M : Monitor<D>, D: Any> addMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+            fun <M : Monitor<D>, D: Any> addMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>): Builder {
                 (monitors[monitorClass] as? M)?.addMonitorObserver(observer)
+                return this
             }
 
             @Suppress("UNCHECKED_CAST")
-            fun <M : Monitor<D>, D: Any> removeMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>) {
+            fun <M : Monitor<D>, D: Any> removeMonitorObserver(monitorClass: Class<M>, observer: Monitor.MonitorDataObserver<D>): Builder {
                 (monitors[monitorClass] as? M)?.removeMonitorObserver(observer)
+                return this
             }
 
             fun setBackgroundThread(backgroundThread: HandlerThread): Builder {
                 this.backgroundThread = backgroundThread
+                return this
+            }
+
+            fun setInitCallback(initCallback: InitCallback?): Builder {
+                this.initCallback = initCallback
                 return this
             }
 
@@ -159,12 +177,12 @@ class tApm private constructor(
                     tApm(
                         application = application,
                         monitors = monitors,
-                        executor = Executor(backgroundThread = backgroundThread)
+                        executor = Executor(backgroundThread = backgroundThread),
+                        initCallback = initCallback
                     )
                 } else {
                     error("Already created tApm instance.")
                 }
-
             }
         }
     }
