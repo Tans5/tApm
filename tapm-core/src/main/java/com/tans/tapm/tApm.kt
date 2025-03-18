@@ -9,6 +9,7 @@ import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.DeviceInfo
+import com.tans.tapm.monitors.AnrMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -135,6 +136,7 @@ class tApm private constructor(
 
             private val monitors: MutableMap<Class<out Monitor<*>>, Monitor<*>> = mutableMapOf(
                 JavaCrashMonitor::class.java to JavaCrashMonitor(),
+                AnrMonitor::class.java to AnrMonitor(),
                 CpuUsageMonitor::class.java to CpuUsageMonitor(),
                 CpuPowerCostMonitor::class.java to CpuPowerCostMonitor(),
                 ForegroundScreenPowerCostMonitor::class.java to ForegroundScreenPowerCostMonitor()

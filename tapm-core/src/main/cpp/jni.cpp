@@ -3,19 +3,29 @@
 //
 
 #include <jni.h>
+#include "anr/anr.h"
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_tans_tapm_monitors_AnrMonitor_registerAnrMonitor(
+Java_com_tans_tapm_monitors_AnrMonitor_registerAnrMonitorNative(
         JNIEnv * env,
-        jobject javaAnrMonitor) {
-    // TODO:
-    return 0L;
+        jobject javaAnrMonitor,
+        jstring anrOutputDir) {
+    auto anr = new Anr;
+    auto ret = anr->prepare(env, javaAnrMonitor, anrOutputDir);
+    if (ret == 0) {
+        return (int64_t) anr;
+    } else {
+        anr->release(env);
+        return 0L;
+    }
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_tans_tapm_monitors_AnrMonitor_unregisterAnrMonitor(
+Java_com_tans_tapm_monitors_AnrMonitor_unregisterAnrMonitorNative(
         JNIEnv * env,
         jobject javaAnrMonitor,
-        jlong anrMonitor) {
-    // TODO:
+        jlong anrPtr) {
+    if (anrPtr != 0L) {
+        reinterpret_cast<Anr *>(anrPtr)->release(env);
+    }
 }
