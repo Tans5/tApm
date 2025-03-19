@@ -30,7 +30,9 @@ add_library(
         jni.cpp
         tapm_log.h
         anr/anr.h
-        anr/anr.cpp)
+        anr/anr.cpp
+        anr/xhook.h
+)
 
 target_link_libraries(
         tapm

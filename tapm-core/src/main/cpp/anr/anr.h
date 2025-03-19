@@ -7,6 +7,10 @@
 #include <jni.h>
 #include <csignal>
 
+#ifndef SIGNAL_CATCHER_BUFFER_SIZE
+#define SIGNAL_CATCHER_BUFFER_SIZE 4096
+#endif
+
 typedef struct sigaction sigaction_p;
 
 typedef struct Anr {
@@ -26,5 +30,18 @@ typedef struct Anr {
 
     void release(JNIEnv *jniEnv);
 } Anr;
+
+typedef struct AnrData{
+    int64_t anrTime = 0L;
+    char * anrFilePath = nullptr;
+    bool isSigFromMe = false;
+    volatile int anrFileFd = -1;
+    volatile int anrFileWriteFinishNotifyFd = -1;
+    volatile int epollFd = -1;
+
+    int32_t prepare(const char *baseDir);
+
+    void release();
+} AnrData;
 
 #endif //TAPM_ANR_H

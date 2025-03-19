@@ -5,11 +5,26 @@
 #include <cstring>
 #include <unistd.h>
 #include <dirent.h>
-#include <asm-generic/fcntl.h>
 #include <fcntl.h>
+#include <syscall.h>
+#include <sys/epoll.h>
+#include <sys/time.h>
+#include <sys/eventfd.h>
+#include <pthread.h>
+
 #include "anr.h"
 #include "../tapm_log.h"
+#include "xhook.h"
 
+
+static pthread_mutex_t lock;
+static volatile bool isInited = false;
+static void init() {
+    if (!isInited) {
+        isInited = true;
+        pthread_mutex_init(&lock, nullptr);
+    }
+}
 
 static bool isNumberStr(const char *str, int maxLen) {
     for (int i = 0; i < maxLen; i ++) {
@@ -26,9 +41,11 @@ static bool isNumberStr(const char *str, int maxLen) {
     return true;
 }
 
-#ifndef SIGNAL_CATCHER_BUFFER_SIZE
-#define SIGNAL_CATCHER_BUFFER_SIZE 1024
-#endif
+static int64_t getTimeMillis() {
+    struct timeval tv{};
+    gettimeofday(&tv, nullptr);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
 static int32_t getSignalCatcherTid() {
     pid_t myPid = getpid();
@@ -71,15 +88,138 @@ static int32_t getSignalCatcherTid() {
 
 static volatile Anr* workingAnrMonitor = nullptr;
 
+static volatile AnrData* writingAnrData = nullptr;
+
+static ssize_t (*origin_write)(int fd, const void *const buf, size_t count) = write;
+
+static size_t my_write(int fd, const void *const buf, size_t count) {
+    auto anrMonitor = workingAnrMonitor;
+    if (anrMonitor != nullptr && gettid() == anrMonitor->signalCatcherTid) {
+        LOGD("Signal catcher is writing anr data.");
+        if (writingAnrData != nullptr) {
+            int fileFd = writingAnrData->anrFileFd;
+            int eventFd = writingAnrData->anrFileWriteFinishNotifyFd;
+            origin_write(fileFd, buf, count);
+            int eventValue = 1;
+            origin_write(eventFd, &eventValue, sizeof(int));
+        }
+    }
+    return origin_write(fd, buf, count);
+}
+
+static int32_t hookWriteMethod(bool isAddHook) {
+    int apiLevel = android_get_device_api_level();
+    const char *writeLibName;
+    if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
+        writeLibName = ".*/libc\\.so$";
+    } else if (apiLevel == 29) {
+        writeLibName = ".*/libbase\\.so$";
+    } else {
+        writeLibName = ".*/libart\\.so$";
+    }
+    int ret = 0;
+    xhook_clear();
+    if (isAddHook) {
+        ret = xhook_register(writeLibName, "write", (void *)my_write, nullptr);
+    } else {
+        ret = xhook_register(writeLibName, "write", (void *)origin_write, nullptr);
+    }
+    xhook_refresh(false);
+    if (ret == 0) {
+        if (isAddHook) {
+            LOGD("Hook write symbol success.");
+        } else {
+            LOGD("Remove hook write symbol success.");
+        }
+        return 0;
+    } else {
+        if (isAddHook) {
+            LOGE("Hook write symbol fail.");
+        } else {
+            LOGE("Remove hook write symbol fail.");
+        }
+        return -1;
+    }
+}
+
+static void* waitingWriteAnrDataFinishThread(void *) {
+    pthread_mutex_lock(&lock);
+    auto *data = const_cast<AnrData *>(writingAnrData);
+    struct epoll_event event{};
+    if (data == nullptr) {
+        LOGE("No anr data is writing.");
+        goto End;
+    }
+    epoll_wait(data->epollFd, &event, 1, 1500L);
+    if (event.data.fd == data->anrFileWriteFinishNotifyFd && event.events == EPOLLIN) {
+        LOGD("Writing anr file success.");
+        // TODO:
+    } else {
+        LOGE("Writing anr file fail.");
+        // TODO:
+    }
+    End:
+    if (data != nullptr) {
+        data->release();
+    }
+    writingAnrData = nullptr;
+    hookWriteMethod(false);
+    pthread_mutex_unlock(&lock);
+    return nullptr;
+}
+
 static void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
     auto anrMonitor = workingAnrMonitor;
     if (anrMonitor != nullptr) {
         if (sig == SIGQUIT) {
-            LOGD("Receive SIGQUIT.");
-            auto oldAction = anrMonitor->oldQuitSigAction;
-            if (oldAction->sa_sigaction != nullptr) {
-                oldAction->sa_sigaction(sig, sig_info, uc);
+            pthread_mutex_lock(&lock);
+
+            anrMonitor = workingAnrMonitor;
+
+            int fromPid1 = sig_info->_si_pad[3];
+            int fromPid2 = sig_info->_si_pad[4];
+            int myPid = getpid();
+            int ret = 0;
+            bool isSigFromMe = myPid == fromPid1 || myPid == fromPid2;
+            auto anrData = new AnrData;
+            LOGD("Receive SIGQUIT isFromMe=%d.", isSigFromMe);
+
+            if (anrMonitor == nullptr) {
+                LOGE("Wrong state, anr monitor is null.");
+                ret = -1;
+                goto End;
             }
+
+            if (writingAnrData != nullptr) {
+                ret = -1;
+                LOGE("Wrong state, writing anr data is not null.");
+                goto End;
+            }
+            ret = anrData->prepare(anrMonitor->anrTraceOutputDir);
+            if (ret != 0) {
+                ret = -1;
+                LOGE("Init Anr data fail.");
+                goto End;
+            }
+
+            ret = hookWriteMethod(true);
+            if (ret != 0) {
+                LOGE("Hook write method fail.");
+                goto End;
+            }
+
+            pthread_t t;
+            pthread_create(&t, nullptr, waitingWriteAnrDataFinishThread, nullptr);
+
+            End:
+            if (ret != 0) {
+                anrData->release();
+            } else {
+                writingAnrData = anrData;
+            }
+            // Send SIGQUIT to signal catcher.
+            syscall(SYS_tgkill, myPid, anrMonitor->signalCatcherTid, SIGQUIT);
+            pthread_mutex_unlock(&lock);
         } else {
             LOGE("Receive sig: %d, but not SIGQUIT.", sig);
         }
@@ -88,8 +228,10 @@ static void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
     }
 }
 
-
 int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring anrOutputDir) {
+    if (!isInited) { init(); }
+    pthread_mutex_lock(&lock);
+
     jniEnv->GetJavaVM(&this->jvm);
     this->jAnrObject = jniEnv->NewGlobalRef(j_AnrObject);
 
@@ -100,12 +242,15 @@ int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring anrOutputDir) 
     dirCopy[dirLen] = '\0';
     this->anrTraceOutputDir = dirCopy;
     this->signalCatcherTid = getSignalCatcherTid();
+    int32_t ret = 0;
+    struct sigaction newSigaction {};
     if (this->signalCatcherTid <= 0) {
-        return -1;
+        LOGE("Get signal catcher tid fail.");
+        ret = -1;
+        goto End;
     }
     LOGD("Get signal catcher tid: %d", this->signalCatcherTid);
 
-    int32_t ret = 0;
     sigset_t sigSets;
     sigemptyset(&sigSets);
     sigaddset(&sigSets, SIGQUIT);
@@ -116,10 +261,11 @@ int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring anrOutputDir) 
         delete this->oldBlockSigSets;
         this->oldBlockSigSets = nullptr;
         LOGE("Unblock SIGQUIT fail: %d", ret);
-        return -1;
+        ret = -1;
+        goto End;
     }
+    LOGD("Unblock SIGQUIT success.");
 
-    struct sigaction newSigaction {};
     sigfillset(&newSigaction.sa_mask);
     newSigaction.sa_flags = SA_RESTART | SA_ONSTACK | SA_SIGINFO;
     newSigaction.sa_sigaction = anrSignalHandler;
@@ -129,15 +275,22 @@ int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring anrOutputDir) 
         delete this->oldQuitSigAction;
         this->oldQuitSigAction = nullptr;
         LOGE("Register new SIGQUIT action fail: %d", ret);
-        return -1;
+        goto End;
     }
     LOGD("Register new SIGQUIT action success.");
 
-    workingAnrMonitor = this;
-    return 0;
+    End:
+    if (ret == 0) {
+        workingAnrMonitor = this;
+    } else {
+        workingAnrMonitor = nullptr;
+    }
+    pthread_mutex_unlock(&lock);
+    return ret;
 }
 
 void Anr::release(JNIEnv *jniEnv) {
+    pthread_mutex_lock(&lock);
     workingAnrMonitor = nullptr;
     this->jvm = nullptr;
     if (this->jAnrObject != nullptr) {
@@ -161,6 +314,92 @@ void Anr::release(JNIEnv *jniEnv) {
         delete this ->oldQuitSigAction;
         this->oldQuitSigAction = nullptr;
     }
+    pthread_mutex_unlock(&lock);
+    delete this;
+}
 
+
+int32_t AnrData::prepare(const char *baseDir) {
+    // Create file name.
+    this->anrTime = getTimeMillis();
+    this->anrFilePath = static_cast<char *>(malloc(SIGNAL_CATCHER_BUFFER_SIZE));
+    int ret = sprintf(this->anrFilePath, "%s/%lld.txt", baseDir, this->anrTime);
+    if (ret >= SIGNAL_CATCHER_BUFFER_SIZE) {
+        LOGE("Anr output file name too long.");
+        ret = -1;
+    } else {
+        ret = 0;
+    }
+
+    // Open file.
+    if (ret == 0) {
+        int fd = open(this->anrFilePath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        if (fd <= 0) {
+            LOGE("Open output file fail: %d", fd);
+            ret = -1;
+        } else {
+            this->anrFileFd = fd;
+            ret = 0;
+        }
+    }
+
+    // Create event fd
+    if (ret == 0) {
+        ret = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+        if (ret > 0) {
+            this->anrFileWriteFinishNotifyFd = ret;
+            ret = 0;
+        } else {
+            LOGE("Create event fd fail: %d", ret);
+            ret = -1;
+        }
+    }
+
+    // Create epoll fd
+    if (ret == 0) {
+        ret = epoll_create(1);
+        if (ret > 0) {
+            this->epollFd = ret;
+            ret = 0;
+        } else {
+            LOGE("Create epoll fd fail: %d", ret);
+            ret = -1;
+        }
+    }
+
+    // Epoll add event fd
+    if (ret == 0) {
+        struct epoll_event event {};
+        event.events = EPOLLIN;
+        event.data.fd = this->anrFileWriteFinishNotifyFd;
+        ret = epoll_ctl(this->epollFd, EPOLL_CTL_ADD, this->anrFileWriteFinishNotifyFd, &event);
+        if (ret == -1) {
+            LOGE("Add epoll event fail.");
+        } else {
+            ret = 0;
+        }
+    }
+
+    return ret;
+}
+
+void AnrData::release() {
+    this->anrTime = 0L;
+    if (this->anrFilePath != nullptr) {
+        delete this->anrFilePath;
+        this->anrFilePath = nullptr;
+    }
+    if (this->anrFileWriteFinishNotifyFd != -1) {
+        close(this->anrFileWriteFinishNotifyFd);
+        this->anrFileWriteFinishNotifyFd = -1;
+    }
+    if (this->anrFileFd != -1) {
+        close(this->anrFileFd);
+        this->anrFileFd = -1;
+    }
+    if (this->epollFd != -1) {
+        close(this->epollFd);
+        this->epollFd = -1;
+    }
     delete this;
 }
