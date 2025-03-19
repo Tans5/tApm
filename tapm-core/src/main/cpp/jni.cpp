@@ -8,10 +8,9 @@
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_tans_tapm_monitors_AnrMonitor_registerAnrMonitorNative(
         JNIEnv * env,
-        jobject javaAnrMonitor,
-        jstring anrOutputDir) {
+        jobject javaAnrMonitor) {
     auto anr = new Anr;
-    auto ret = anr->prepare(env, javaAnrMonitor, anrOutputDir);
+    auto ret = anr->prepare(env, javaAnrMonitor);
     if (ret == 0) {
         return (int64_t) anr;
     } else {

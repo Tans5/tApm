@@ -19,29 +19,20 @@ typedef struct Anr {
      */
     JavaVM *jvm = nullptr;
     jobject jAnrObject = nullptr;
-    const char * anrTraceOutputDir = nullptr;
 
     int32_t signalCatcherTid = -1;
 
     sigset_t *oldBlockSigSets = nullptr;
     sigaction_p *oldQuitSigAction = nullptr;
 
-    int32_t prepare(JNIEnv *jniEnv, jobject jAnrObject, jstring anrOutputDir);
+    int32_t prepare(JNIEnv *jniEnv, jobject jAnrObject);
 
     void release(JNIEnv *jniEnv);
 } Anr;
 
 typedef struct AnrData{
     int64_t anrTime = 0L;
-    char * anrFilePath = nullptr;
-    bool isSigFromMe = false;
-    volatile int anrFileFd = -1;
-    volatile int anrFileWriteFinishNotifyFd = -1;
-    volatile int epollFd = -1;
-
-    int32_t prepare(const char *baseDir);
-
-    void release();
+    bool isFromMe = false;
 } AnrData;
 
 #endif //TAPM_ANR_H

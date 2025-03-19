@@ -16,7 +16,7 @@ class AnrMonitor : AbsMonitor<Unit>(Long.MAX_VALUE) {
     override fun onStart(apm: tApm) {
         // Register SIGQUIT need on MainThread.
         executor.executeOnMainThread {
-            val ptr = registerAnrMonitorNative(application.cacheDir.toString())
+            val ptr = registerAnrMonitorNative()
             if (ptr != 0L) {
                 this.nativePtr = ptr
                 tApmLog.d(TAG, "AnrMonitor started.")
@@ -40,7 +40,7 @@ class AnrMonitor : AbsMonitor<Unit>(Long.MAX_VALUE) {
         }
     }
 
-    private external fun registerAnrMonitorNative(anrOutputDir: String): Long
+    private external fun registerAnrMonitorNative(): Long
 
     private external fun unregisterAnrMonitorNative(nativePtr: Long)
 
