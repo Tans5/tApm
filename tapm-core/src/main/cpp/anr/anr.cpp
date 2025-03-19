@@ -16,21 +16,24 @@
 #include "../tapm_log.h"
 #include "xhook.h"
 
+static bool isNumberStr(const char* str, int maxLen);
 
+static int64_t getTimeMillis();
 
-bool isNumberStr(const char* str, int maxLen);
+static int32_t getSignalCatcherTid();
 
-int64_t getTimeMillis();
+static int32_t hookWriteMethod(bool isAddHook);
 
-int32_t getSignalCatcherTid();
+static size_t my_write(int fd, const void * const buf, size_t count);
 
-int32_t hookWriteMethod(bool isAddHook);
+typedef struct HandleAnrDataThreadArgs{
+    void * data = nullptr;
+    size_t dataLen = 0;
+} HandleAnrDataThreadArgs;
 
-size_t my_write(int fd, const void * const buf, size_t count);
+static void* handleAnrDataThread(void * arg);
 
-void* handleAnrDataThread(void * arg);
-
-void anrSignalHandler(int sig, siginfo_t * sig_info, void *uc);
+static void anrSignalHandler(int sig, siginfo_t * sig_info, void *uc);
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -47,7 +50,7 @@ static volatile AnrData* writingAnrData = nullptr;
 
 ssize_t (*origin_write)(int fd, const void *const buf, size_t count) = write;
 
-bool isNumberStr(const char *str, int maxLen) {
+static bool isNumberStr(const char *str, int maxLen) {
     for (int i = 0; i < maxLen; i ++) {
         char c = str[i];
         if (c == '\0') {
@@ -62,13 +65,13 @@ bool isNumberStr(const char *str, int maxLen) {
     return true;
 }
 
-int64_t getTimeMillis() {
+static int64_t getTimeMillis() {
     struct timeval tv{};
     gettimeofday(&tv, nullptr);
     return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-int32_t getSignalCatcherTid() {
+static int32_t getSignalCatcherTid() {
     pid_t myPid = getpid();
     char processPath[SIGNAL_CATCHER_BUFFER_SIZE];
     int size = sprintf(processPath, "/proc/%d/task", myPid);
@@ -107,7 +110,7 @@ int32_t getSignalCatcherTid() {
     return - 1;
 }
 
-int32_t hookWriteMethod(bool isAddHook) {
+static int32_t hookWriteMethod(bool isAddHook) {
     int apiLevel = android_get_device_api_level();
     const char *writeLibName;
     if (apiLevel >= 30 || apiLevel == 25 || apiLevel == 24) {
@@ -142,29 +145,54 @@ int32_t hookWriteMethod(bool isAddHook) {
     }
 }
 
-size_t my_write(int fd, const void *const buf, size_t count) {
+static size_t my_write(int fd, const void *const buf, size_t count) {
     auto anrMonitor = workingAnrMonitor;
     if (anrMonitor != nullptr && gettid() == anrMonitor->signalCatcherTid) {
         LOGD("Signal catcher is writing anr data.");
         if (writingAnrData != nullptr) {
-            char *copy = static_cast<char *>(malloc(count + 1));
+            char *copy = static_cast<char *>(malloc(count));
             memcpy(copy, buf, count);
-            copy[count] = '\0';
+            auto args = new HandleAnrDataThreadArgs;
+            args->data = copy;
+            args->dataLen = count;
             pthread_t t;
-            pthread_create(&t, nullptr, handleAnrDataThread, copy);
+            pthread_create(&t, nullptr, handleAnrDataThread, args);
         }
     }
     return origin_write(fd, buf, count);
 }
 
-void* handleAnrDataThread(void * arg) {
+static void* handleAnrDataThread(void * arg_v) {
     pthread_mutex_lock(&lock);
+    auto arg = static_cast<HandleAnrDataThreadArgs*>(arg_v);
     if (writingAnrData != nullptr && workingAnrMonitor != nullptr) {
         LOGD("Receive anr trace data.");
-        // TODO: Notify java
+        JNIEnv *env = nullptr;
+        workingAnrMonitor->jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+        if (env == nullptr) {
+            JavaVMAttachArgs jvmAttachArgs {
+                    .version = JNI_VERSION_1_6,
+                    .name = "HandleAnrDataThread",
+                    .group = nullptr
+            };
+            auto result = workingAnrMonitor->jvm->AttachCurrentThread(&env, &jvmAttachArgs);
+            if (result != JNI_OK) {
+                LOGE("Attach java thread fail.");
+                env = nullptr;
+            }
+        }
+        if (env != nullptr) {
+            auto jAnrMonitor = workingAnrMonitor->jAnrObject;
+            auto jAnrMonitorClazz = env->GetObjectClass(jAnrMonitor);
+            // auto jAnrMonitorClazz = env->FindClass("com/tans/tapm/monitors/AnrMonitor");
+            auto anrMethodId = env->GetMethodID(jAnrMonitorClazz, "onAnr", "(JZLjava/lang/String;)V");
+            auto anrStackTrackJString = env->NewStringUTF(reinterpret_cast<const char *>(static_cast<const jchar *>(arg->data)));
+            env->CallVoidMethod(jAnrMonitor, anrMethodId, writingAnrData->anrTime, writingAnrData->isFromMe, anrStackTrackJString);
+        }
     } else {
         LOGE("Wrong state, can't handle anr trace data.");
     }
+    free(arg->data);
     free(arg);
     writingAnrData = nullptr;
     hookWriteMethod(false);
@@ -172,7 +200,7 @@ void* handleAnrDataThread(void * arg) {
     return nullptr;
 }
 
-void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
+static void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
     auto anrMonitor = workingAnrMonitor;
     if (anrMonitor != nullptr) {
         if (sig == SIGQUIT) {

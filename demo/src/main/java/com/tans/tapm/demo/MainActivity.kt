@@ -21,6 +21,9 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
         viewBinding.testJavaCrashBt.clicks(this) {
             error("Test Crash.")
         }
+        viewBinding.blockMainThreadBt.clicks(this) {
+            Thread.sleep(8_000)
+        }
     }
 
 }

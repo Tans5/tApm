@@ -2,10 +2,11 @@ package com.tans.tapm.monitors
 
 import androidx.annotation.Keep
 import com.tans.tapm.internal.tApmLog
+import com.tans.tapm.model.Anr
 import com.tans.tapm.tApm
 
 @Keep
-class AnrMonitor : AbsMonitor<Unit>(Long.MAX_VALUE) {
+class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
     override val isSupport: Boolean
         get() = this.apm.get() != null
 
@@ -38,6 +39,21 @@ class AnrMonitor : AbsMonitor<Unit>(Long.MAX_VALUE) {
                 tApmLog.e(TAG, "Stop AnrMonitor failed.")
             }
         }
+    }
+
+    /**
+     * Call by native code.
+     */
+    fun onAnr(time: Long, isSigFromMe: Boolean, anrTraceData: String) {
+        tApmLog.e(TAG, "Receive SIGQUIT signal.")
+        // TODO: Check real anr.
+        dispatchMonitorData(
+            Anr(
+                time = time,
+                isSigFromMe = isSigFromMe,
+                anrTraceData = anrTraceData
+            )
+        )
     }
 
     private external fun registerAnrMonitorNative(): Long

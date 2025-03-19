@@ -12,4 +12,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <Button
+        android:id="@+id/block_main_thread_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Block Main Thread"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/test_java_crash_bt" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
