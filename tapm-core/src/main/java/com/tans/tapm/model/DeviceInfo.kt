@@ -1,6 +1,6 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.internal.toHumanReadableMemorySize
+import com.tans.tapm.toHumanReadableMemorySize
 
 data class DeviceInfo(
     val deviceName: String,

@@ -1,30 +1,29 @@
-package com.tans.tapm.internal
+package com.tans.tapm
 
-import com.tans.tapm.CpuStateSnapshotCapture
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-internal fun Long.toHumanReadableCpuSpeed(): String {
+fun Long.toHumanReadableCpuSpeed(): String {
     return String.format(Locale.US,"%.2f GHz", this.toDouble() / 1_000_000.0)
 }
 
-internal fun Double.toHumanReadablePercent(): String {
+fun Double.toHumanReadablePercent(): String {
     return String.format(Locale.US, "%.1f", this * 100.0) + " %"
 }
 
-internal fun Float.toHumanReadablePercent(): String {
+fun Float.toHumanReadablePercent(): String {
     return String.format(Locale.US, "%.1f", this * 100.0) + " %"
 }
 
-internal fun Double.toHumanReadableHours(): String {
+fun Double.toHumanReadableHours(): String {
     return String.format(Locale.US, "%.2f H", this)
 }
 
-internal fun Double.toHumanReadablePower(): String {
+fun Double.toHumanReadablePower(): String {
     return String.format(Locale.US, "%.2f mAh", this)
 }
 
-internal fun Long.toHumanReadableMemorySize(): String {
+fun Long.toHumanReadableMemorySize(): String {
     return when(this) {
         in Long.MIN_VALUE until 0L -> this.toString()
         in 0L until 1024L -> "$this B"
@@ -34,11 +33,11 @@ internal fun Long.toHumanReadableMemorySize(): String {
     }
 }
 
-internal fun Long.jiffiesToHours(): Double {
+fun Long.jiffiesToHours(): Double {
     return this * CpuStateSnapshotCapture.oneJiffyInMillis.toDouble() / (60.0 * 60.0 * 1000.0)
 }
 
-internal fun Long.millisToHours(): Double {
+fun Long.millisToHours(): Double {
     return this / (60.0 * 60.0 * 1000.0)
 }
 
@@ -59,6 +58,6 @@ private val sdfDateTimeMs: SimpleDateFormat
         }
     }
 
-internal fun Long.formatDataTime(): String {
+fun Long.formatDataTime(): String {
     return sdfDateTimeMs.format(this)
 }

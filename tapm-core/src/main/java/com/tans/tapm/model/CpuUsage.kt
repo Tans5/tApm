@@ -1,8 +1,8 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.internal.formatDataTime
-import com.tans.tapm.internal.toHumanReadableCpuSpeed
-import com.tans.tapm.internal.toHumanReadablePercent
+import com.tans.tapm.formatDataTime
+import com.tans.tapm.toHumanReadableCpuSpeed
+import com.tans.tapm.toHumanReadablePercent
 
 data class SingleCpuCoreUsage(
     val coreIndex: Int,

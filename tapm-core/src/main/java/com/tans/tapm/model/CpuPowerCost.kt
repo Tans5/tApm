@@ -1,9 +1,9 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.internal.formatDataTime
-import com.tans.tapm.internal.toHumanReadableCpuSpeed
-import com.tans.tapm.internal.toHumanReadableHours
-import com.tans.tapm.internal.toHumanReadablePower
+import com.tans.tapm.formatDataTime
+import com.tans.tapm.toHumanReadableCpuSpeed
+import com.tans.tapm.toHumanReadableHours
+import com.tans.tapm.toHumanReadablePower
 
 data class CpuPowerCost(
     val startTimeInMillis: Long,

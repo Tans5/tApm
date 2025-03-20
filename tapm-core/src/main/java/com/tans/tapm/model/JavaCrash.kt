@@ -1,6 +1,6 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.internal.formatDataTime
+import com.tans.tapm.formatDataTime
 
 data class JavaCrash(
     val time: Long,

@@ -6,9 +6,9 @@ import android.os.Message
 import android.os.SystemClock
 import android.provider.Settings
 import com.tans.tapm.AppLifecycleOwner
-import com.tans.tapm.internal.millisToHours
+import com.tans.tapm.millisToHours
 import com.tans.tapm.internal.tApmLog
-import com.tans.tapm.internal.toHumanReadablePercent
+import com.tans.tapm.toHumanReadablePercent
 import com.tans.tapm.model.ForegroundScreenPowerCost
 import com.tans.tapm.tApm
 import java.util.concurrent.atomic.AtomicReference

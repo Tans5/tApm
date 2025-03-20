@@ -1,7 +1,7 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.internal.formatDataTime
-import com.tans.tapm.internal.toHumanReadablePower
+import com.tans.tapm.formatDataTime
+import com.tans.tapm.toHumanReadablePower
 
 data class ForegroundScreenPowerCost(
     val startTimeInMillis: Long,

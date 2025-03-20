@@ -5,8 +5,8 @@ import android.os.Message
 import android.os.SystemClock
 import com.tans.tapm.CpuStateSnapshotCapture
 import com.tans.tapm.PowerProfile.Companion.ComponentProfile.CpuProfile
-import com.tans.tapm.internal.jiffiesToHours
-import com.tans.tapm.internal.millisToHours
+import com.tans.tapm.jiffiesToHours
+import com.tans.tapm.millisToHours
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.CpuClusterPowerCost
 import com.tans.tapm.model.CpuClusterSpeedPowerCost

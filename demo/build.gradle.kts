@@ -51,6 +51,8 @@ dependencies {
     implementation(libs.coroutines.android)
 
     implementation(libs.tuiutils)
+    implementation(libs.tlog)
+    implementation(libs.tlrucatch)
     implementation(project(":tapm-core"))
 
     testImplementation(libs.junit)
