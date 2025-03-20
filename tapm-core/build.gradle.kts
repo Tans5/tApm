@@ -25,6 +25,24 @@ android {
         }
     }
 
+//copyReleaseJniLibsProjectAndLocalJars
+    libraryVariants.all {
+        val variantName = name
+        val upperVariantName = variantName.replaceFirstChar { it.toUpperCase() }
+        tasks.register<Copy>("copyNativeLibsToAar$upperVariantName") {
+            from("src/main/jniLibs")
+            into("build/intermediates/library_and_local_jars_jni/${variantName}/copy${upperVariantName}JniLibsProjectAndLocalJars/jni")
+            include("**/*.a")
+        }
+
+//        tasks.named("bundle${upperVariantName}Aar") {
+//            dependsOn("copyNativeLibsToAar$upperVariantName")
+//        }
+        tasks.named("copy${upperVariantName}JniLibsProjectAndLocalJars") {
+            dependsOn("copyNativeLibsToAar$upperVariantName")
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path("src/main/cpp/CMakeLists.txt")
