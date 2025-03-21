@@ -2,10 +2,12 @@
 // Created by pengcheng.tan on 2025/3/21.
 //
 #include "crash.h"
+#include "../tapm_log.h"
 
 static bool CrashCallback(const google_breakpad::MinidumpDescriptor& descriptor,
                   void* context,
                   bool succeeded) {
+    LOGD("Receive native crash signal.");
     // TODO:
     return succeeded;
 }

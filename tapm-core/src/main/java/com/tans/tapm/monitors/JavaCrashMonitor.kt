@@ -62,6 +62,10 @@ class JavaCrashMonitor : AbsMonitor<JavaCrash>(Long.MAX_VALUE) {
         tApmLog.e(TAG, "JavaCrashMonitor stopped.")
     }
 
+    fun testJavaCrash() {
+        error("Test java crash.")
+    }
+
     companion object {
         private const val TAG = "JavaCrashMonitor"
     }

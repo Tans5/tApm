@@ -48,10 +48,11 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
         }
     }
 
+    external fun testNativeCrash()
+
     private external fun registerNativeCrashMonitorNative(crashFileDir: String): Long
 
     private external fun unregisterNativeCrashMonitorNative(nativePtr: Long)
-
 
     companion object {
         private const val TAG = "NativeCrashMonitor"

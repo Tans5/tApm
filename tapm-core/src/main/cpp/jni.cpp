@@ -47,6 +47,15 @@ Java_com_tans_tapm_monitors_NativeCrashMonitor_registerNativeCrashMonitorNative(
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_tans_tapm_monitors_NativeCrashMonitor_testNativeCrash(
+        JNIEnv * env,
+        jobject javaAnrMonitor) {
+    Crash * c = nullptr;
+    JNIEnv *e = nullptr;
+    c->jvm->GetEnv(reinterpret_cast<void **>(&e), JNI_VERSION_1_6);
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_tans_tapm_monitors_NativeCrashMonitor_unregisterNativeCrashMonitorNative(
         JNIEnv * env,
         jobject javaAnrMonitor,
