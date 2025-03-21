@@ -13,7 +13,7 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
     override val isSupport: Boolean
         get() = this.apm.get() != null
 
-    private var nativePtr: Long = -1
+    private var nativePtr: Long = 0
 
     override fun onInit(apm: tApm) {  }
 
@@ -34,9 +34,9 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
         // Register SIGQUIT need on MainThread.
         executor.executeOnMainThread {
             val ptr = nativePtr
-            if (ptr > 0L) {
+            if (ptr != 0L) {
                 unregisterAnrMonitorNative(ptr)
-                nativePtr = -1
+                nativePtr = 0
                 tApmLog.d(TAG, "AnrMonitor stopped.")
             } else {
                 tApmLog.e(TAG, "Stop AnrMonitor failed.")

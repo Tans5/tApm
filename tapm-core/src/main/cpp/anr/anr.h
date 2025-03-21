@@ -18,7 +18,7 @@ typedef struct Anr {
      * Java
      */
     JavaVM *jvm = nullptr;
-    jobject jAnrObject = nullptr;
+    jobject jAnrMonitor = nullptr;
 
     int32_t signalCatcherTid = -1;
 

@@ -2,6 +2,7 @@ package com.tans.tapm
 
 import android.app.Application
 import android.os.Looper
+import java.io.File
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -22,6 +23,8 @@ interface Monitor<T : Any> : AppLifecycleOwner.AppLifecycleObserver {
     val monitorIntervalInMillis: AtomicLong
 
     val monitorDataObservers: LinkedBlockingQueue<MonitorDataObserver<T>>
+
+    val cacheBaseDir: File
 
     fun init(apm: tApm) {
         if (this.apm.compareAndSet(null, apm)) {

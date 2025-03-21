@@ -39,6 +39,8 @@ add_library(
         tapm_log.h
         anr/anr.h
         anr/anr.cpp
+        crash/crash.h
+        crash/crash.cpp
 )
 target_include_directories(tapm PRIVATE
         xhook

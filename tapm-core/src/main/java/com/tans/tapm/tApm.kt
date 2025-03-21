@@ -11,6 +11,8 @@ import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.DeviceInfo
 import com.tans.tapm.monitors.AnrMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
+import com.tans.tapm.monitors.NativeCrashMonitor
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("ClassName")
@@ -18,7 +20,8 @@ class tApm private constructor(
     val application: Application,
     val monitors: Map<Class<out Monitor<*>>, Monitor<*>>,
     val executor: Executor,
-    val initCallback: InitCallback?
+    val initCallback: InitCallback?,
+    val cacheBaseDir: File
 ) {
     @Volatile
     var powerProfile: PowerProfile? = null
@@ -136,6 +139,7 @@ class tApm private constructor(
 
             private val monitors: MutableMap<Class<out Monitor<*>>, Monitor<*>> = mutableMapOf(
                 JavaCrashMonitor::class.java to JavaCrashMonitor(),
+                NativeCrashMonitor::class.java to NativeCrashMonitor(),
                 AnrMonitor::class.java to AnrMonitor(),
                 CpuUsageMonitor::class.java to CpuUsageMonitor(),
                 CpuPowerCostMonitor::class.java to CpuPowerCostMonitor(),
@@ -145,6 +149,8 @@ class tApm private constructor(
             private var backgroundThread: HandlerThread? = null
 
             private var initCallback: InitCallback? = null
+
+            private var cacheBaseDir: File? = null
 
             fun addMonitor(monitor: Monitor<*>): Builder {
                 monitors[monitor::class.java] = monitor
@@ -178,13 +184,19 @@ class tApm private constructor(
                 return this
             }
 
+            fun setCacheBaseDir(file: File): Builder {
+                this.cacheBaseDir = file
+                return this
+            }
+
             fun build(): tApm {
                 return if (isCreatedApmInstance.compareAndSet(false, true)) {
                     tApm(
                         application = application,
                         monitors = monitors,
                         executor = Executor(backgroundThread = backgroundThread),
-                        initCallback = initCallback
+                        initCallback = initCallback,
+                        cacheBaseDir = cacheBaseDir ?: File(application.getExternalFilesDir(null), "tApm")
                     )
                 } else {
                     error("Already created tApm instance.")

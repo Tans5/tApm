@@ -6,6 +6,7 @@ import com.tans.tapm.Executor
 import com.tans.tapm.Monitor
 import com.tans.tapm.PowerProfile
 import com.tans.tapm.tApm
+import java.io.File
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -19,6 +20,11 @@ abstract class AbsMonitor<T : Any>(defaultMonitorIntervalInMillis: Long) : Monit
     override val executor: Executor by lazy {
         apm.get()!!.executor
     }
+
+    override val cacheBaseDir: File by lazy {
+        apm.get()!!.cacheBaseDir
+    }
+
     override val isRunning: AtomicBoolean = AtomicBoolean(false)
     override val monitorIntervalInMillis: AtomicLong = AtomicLong(defaultMonitorIntervalInMillis)
     override val monitorDataObservers: LinkedBlockingQueue<Monitor.MonitorDataObserver<T>> = LinkedBlockingQueue()

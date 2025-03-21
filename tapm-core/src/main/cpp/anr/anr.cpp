@@ -182,7 +182,7 @@ static void* handleAnrDataThread(void * arg_v) {
             }
         }
         if (env != nullptr) {
-            auto jAnrMonitor = workingAnrMonitor->jAnrObject;
+            auto jAnrMonitor = workingAnrMonitor->jAnrMonitor;
             auto jAnrMonitorClazz = env->GetObjectClass(jAnrMonitor);
             // auto jAnrMonitorClazz = env->FindClass("com/tans/tapm/monitors/AnrMonitor");
             auto anrMethodId = env->GetMethodID(jAnrMonitorClazz, "onAnr", "(JZLjava/lang/String;)V");
@@ -255,7 +255,7 @@ int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject) {
     pthread_mutex_lock(&lock);
 
     jniEnv->GetJavaVM(&this->jvm);
-    this->jAnrObject = jniEnv->NewGlobalRef(j_AnrObject);
+    this->jAnrMonitor = jniEnv->NewGlobalRef(j_AnrObject);
 
     this->signalCatcherTid = getSignalCatcherTid();
     int32_t ret = 0;
@@ -309,9 +309,9 @@ void Anr::release(JNIEnv *jniEnv) {
     pthread_mutex_lock(&lock);
     workingAnrMonitor = nullptr;
     this->jvm = nullptr;
-    if (this->jAnrObject != nullptr) {
-        jniEnv->DeleteGlobalRef(this->jAnrObject);
-        this->jAnrObject = nullptr;
+    if (this->jAnrMonitor != nullptr) {
+        jniEnv->DeleteGlobalRef(this->jAnrMonitor);
+        this->jAnrMonitor = nullptr;
     }
 
     this->signalCatcherTid = -1;
