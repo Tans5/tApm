@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "tApm"
 include(":demo")
 include(":tapm-core")
+include(":tapm-breakpad")

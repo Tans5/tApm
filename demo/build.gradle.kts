@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.tans.tapm.demo"
-    compileSdk = 35
+    compileSdk = properties["ANDROID_COMPILE_SDK"].toString().toInt()
 
     defaultConfig {
         applicationId = "com.tans.tapm.demo"
-        minSdk = 24
-        targetSdk = 35
+        minSdk = properties["ANDROID_MIN_SDK"].toString().toInt()
+        targetSdk = properties["ANDROID_COMPILE_SDK"].toString().toInt()
         versionCode = 1
         versionName = "1.0"
 
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.tlog)
     implementation(libs.tlrucatch)
     implementation(project(":tapm-core"))
+    implementation(project(":tapm-breakpad"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

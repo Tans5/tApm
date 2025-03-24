@@ -1,13 +1,14 @@
-package com.tans.tapm.monitors
+package com.tans.tapm.breakpad
 
+import android.util.Log
 import androidx.annotation.Keep
-import com.tans.tapm.internal.tApmLog
-import com.tans.tapm.model.NativeCrash
+import com.tans.tapm.breakpad.model.BreakpadNativeCrash
+import com.tans.tapm.monitors.AbsMonitor
 import com.tans.tapm.tApm
 import java.io.File
 
 @Keep
-class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
+class BreakpadNativeCrashMonitor : AbsMonitor<BreakpadNativeCrash>(Long.MAX_VALUE) {
 
     override val isSupport: Boolean
         get() = apm.get() != null
@@ -27,10 +28,9 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
             val ptr = registerNativeCrashMonitorNative(dir.canonicalPath)
             if (ptr != 0L) {
                 nativePtr = ptr
-                tApmLog.d(TAG, "NativeCrashMonitor started.")
+                Log.d(TAG, "NativeCrashMonitor started.")
             } else {
-
-                tApmLog.e(TAG, "Start NativeCrashMonitor failed.")
+                Log.e(TAG, "Start NativeCrashMonitor failed.")
             }
         }
     }
@@ -41,9 +41,9 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
             if (ptr != 0L) {
                 unregisterNativeCrashMonitorNative(ptr)
                 nativePtr = 0L
-                tApmLog.d(TAG, "NativeCrashMonitor stopped.")
+                Log.d(TAG, "NativeCrashMonitor stopped.")
             } else {
-                tApmLog.e(TAG, "Stop NativeCrashMonitor failed.")
+                Log.e(TAG, "Stop NativeCrashMonitor failed.")
             }
         }
     }
@@ -55,7 +55,10 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
     private external fun unregisterNativeCrashMonitorNative(nativePtr: Long)
 
     companion object {
-        private const val TAG = "NativeCrashMonitor"
+        init {
+            System.loadLibrary("tapmbreakpad")
+        }
+        private const val TAG = "BreakpadNativeCrashMonitor"
     }
 
 }
