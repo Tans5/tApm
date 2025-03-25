@@ -74,6 +74,7 @@ void* LinkedList::popLast() {
     } else {
         auto oldTail = tail;
         auto newTail = tail->previous;
+        newTail->next = rootNodePtr;
         tail = newTail;
         auto value = oldTail->value;
         delete oldTail;

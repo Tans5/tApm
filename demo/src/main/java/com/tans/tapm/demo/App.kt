@@ -3,8 +3,6 @@ package com.tans.tapm.demo
 import android.app.Application
 import com.tans.tapm.InitCallback
 import com.tans.tapm.Monitor
-import com.tans.tapm.breakpad.BreakpadNativeCrashMonitor
-import com.tans.tapm.breakpad.model.BreakpadNativeCrash
 import com.tans.tapm.formatDataTime
 import com.tans.tapm.model.Anr
 import com.tans.tapm.model.CpuPowerCost
@@ -106,7 +104,7 @@ class App : Application() {
                     }
                 }
             })
-            .addMonitor(BreakpadNativeCrashMonitor())
+            // .addMonitor(BreakpadNativeCrashMonitor())
             .setInitCallback(object : InitCallback {
                 val TAG = "ApmInit"
 

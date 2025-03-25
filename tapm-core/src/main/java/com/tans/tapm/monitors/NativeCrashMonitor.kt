@@ -1,15 +1,13 @@
-package com.tans.tapm.breakpad
+package com.tans.tapm.monitors
 
 import android.util.Log
 import androidx.annotation.Keep
-import com.tans.tapm.breakpad.model.BreakpadNativeCrash
-import com.tans.tapm.monitors.AbsMonitor
+import com.tans.tapm.model.NativeCrash
 import com.tans.tapm.tApm
 import java.io.File
 
 @Keep
-class BreakpadNativeCrashMonitor : AbsMonitor<BreakpadNativeCrash>(Long.MAX_VALUE) {
-
+class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
     override val isSupport: Boolean
         get() = apm.get() != null
 
@@ -20,7 +18,7 @@ class BreakpadNativeCrashMonitor : AbsMonitor<BreakpadNativeCrash>(Long.MAX_VALU
     }
 
     override fun onStart(apm: tApm) {
-        val dir = File(cacheBaseDir, "BreakpadNativeCrash")
+        val dir = File(cacheBaseDir, "NativeCrash")
         if (!dir.isDirectory) {
             dir.mkdirs()
         }
@@ -55,10 +53,7 @@ class BreakpadNativeCrashMonitor : AbsMonitor<BreakpadNativeCrash>(Long.MAX_VALU
     private external fun unregisterNativeCrashMonitorNative(nativePtr: Long)
 
     companion object {
-        init {
-            System.loadLibrary("tapmbreakpad")
-        }
-        private const val TAG = "BreakpadNativeCrashMonitor"
-    }
 
+        private const val TAG = "NativeCrashMonitor"
+    }
 }
