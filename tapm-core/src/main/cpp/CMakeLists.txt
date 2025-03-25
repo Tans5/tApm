@@ -29,6 +29,8 @@ add_library(
         tapm SHARED
         jni.cpp
         tapm_log.h
+        time/tapm_time.h
+        time/tapm_time.cpp
         anr/anr.h
         anr/anr.cpp
 )
