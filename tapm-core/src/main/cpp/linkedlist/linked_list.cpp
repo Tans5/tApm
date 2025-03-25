@@ -82,3 +82,14 @@ void* LinkedList::popLast() {
         return value;
     }
 }
+
+void LinkedList::forEach(bool (*action)(void *)) const {
+    auto node = head;
+    while (node != rootNodePtr) {
+        auto needContinue = action(node->value);
+        if (!needContinue) {
+            break;
+        }
+        node = node->next;
+    }
+}

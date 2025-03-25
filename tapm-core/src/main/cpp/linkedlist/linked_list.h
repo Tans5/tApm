@@ -28,6 +28,8 @@ typedef struct LinkedList {
 
     void* popLast();
 
+    void forEach(bool (*action)(void *value)) const;
+
 } LinkedList;
 
 #endif //TAPM_LINKED_LIST_H

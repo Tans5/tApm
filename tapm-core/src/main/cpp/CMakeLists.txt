@@ -33,6 +33,8 @@ add_library(
         time/tapm_time.cpp
         linkedlist/linked_list.h
         linkedlist/linked_list.cpp
+        thread/tapm_thread.h
+        thread/tapm_thread.cpp
         anr/anr.h
         anr/anr.cpp
         crash/crash.h
