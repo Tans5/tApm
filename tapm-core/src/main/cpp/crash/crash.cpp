@@ -4,6 +4,12 @@
 #include <cstring>
 #include <pthread.h>
 #include <malloc.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/prctl.h>
+#include <cerrno>
+#include <cstdlib>
+#include <sys/wait.h>
 #include "crash.h"
 #include "../time/tapm_time.h"
 #include "../tapm_log.h"
@@ -29,9 +35,76 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
         int ret = pthread_mutex_trylock(&lock);
         if (ret == 0) {
             LOGD("Receive crash sig: %d", sig);
-            // TODO:
+            auto crashedPid = getpid();
+            auto crashedTid = gettid();
+            pid_t childPid;
+            siginfo_t sigInfoCopy;
+            ucontext_t uContextCopy;
+            memcpy(&sigInfoCopy, sig_info, sizeof(sigInfoCopy));
+            memcpy(&uContextCopy, uc, sizeof(uContextCopy));
 
 
+            ret = prctl(PR_SET_DUMPABLE, 1);
+            if (ret != 0) {
+                LOGE("Set progress dumpable fail: %d", ret);
+                goto End;
+            }
+            errno = 0;
+            ret = prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+            if (ret != 0 && errno != EINVAL) {
+                LOGE("Set process tracer fail: %d", ret);
+                ret = -1;
+            } else {
+                ret = 0;
+            }
+            char crashFileName[32];
+            formatTime(crashTime, crashFileName, 64);
+            char crashFilePath[256];
+            sprintf(crashFilePath, "%s/%s", monitor->crashOutputDir, crashFileName);
+            childPid = fork();
+            if (childPid == 0) {
+                // ChildProcess
+                LOGD("Child process started.");
+                alarm(30);
+                int childProcessRet = 0;
+                auto crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);
+                if (crashFileFd == -1) {
+                    LOGE("Create crash file fail");
+                    childProcessRet = -1;
+                    goto  ChildProcessEnd;
+                }
+
+                // TODO:
+
+                ChildProcessEnd:
+                if (crashFileFd != -1) {
+                    close(crashFileFd);
+                }
+                _Exit(childProcessRet);
+            } else if (childPid > 0) {
+                LOGD("Waiting child process finish work.");
+                // ParentProcess.
+                int childProcessStatus;
+                // Waiting child process finish work.
+                waitpid(childPid, &childProcessStatus, __WALL);
+                LOGD("Child process finished: %d", childProcessStatus);
+                if (childProcessStatus == 0) {
+                    ret = 0;
+                } else {
+                    ret = -1;
+                }
+            } else {
+                // Error;
+                LOGE("Create child process fail: %d", childPid);
+                ret = -1;
+            }
+
+            End:
+            if (ret == 0) {
+                // TODO: success.
+            } else {
+                // TODO: fail.
+            }
             pthread_mutex_unlock(&lock);
         }
     }
@@ -90,6 +163,8 @@ int32_t Crash::prepare(JNIEnv *jniEnv, jobject jCrashMonitorP, jstring crashFile
     }
 
     workingMonitor = this;
+
+    LOGD("Crash monitor prepared.");
 
     End:
     pthread_mutex_unlock(&lock);
