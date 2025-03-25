@@ -15,10 +15,9 @@
 #include "anr.h"
 #include "../tapm_log.h"
 #include "xhook.h"
+#include "../time/tapm_time.h"
 
 static bool isNumberStr(const char* str, int maxLen);
-
-static int64_t getTimeMillis();
 
 static int32_t getSignalCatcherTid();
 
@@ -63,12 +62,6 @@ static bool isNumberStr(const char *str, int maxLen) {
         }
     }
     return true;
-}
-
-static int64_t getTimeMillis() {
-    struct timeval tv{};
-    gettimeofday(&tv, nullptr);
-    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
 static int32_t getSignalCatcherTid() {
@@ -233,7 +226,7 @@ static void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 goto End;
             }
 
-            anrData->anrTime = getTimeMillis();
+            anrData->anrTime = nowInMillis();
             anrData->isFromMe = isSigFromMe;
             writingAnrData = anrData;
 
