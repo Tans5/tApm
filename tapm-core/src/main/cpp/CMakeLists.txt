@@ -31,8 +31,12 @@ add_library(
         tapm_log.h
         time/tapm_time.h
         time/tapm_time.cpp
+        linkedlist/linked_list.h
+        linkedlist/linked_list.cpp
         anr/anr.h
         anr/anr.cpp
+        crash/crash.h
+        crash/crash.cpp
 )
 target_include_directories(tapm PRIVATE
         xhook
