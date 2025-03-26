@@ -86,6 +86,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                         crashedThread = thread;
                         break;
                     }
+                    crashThreadIterator.next();
                 }
                 if (crashedThread == nullptr) {
                     childProcessRet = -1;
@@ -99,7 +100,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 suspendThreads(&crashedProcessStatus);
 
                 // Read all threads register value.
-                // readThreadsRegs(&crashedProcessStatus, crashedThread, &uContextCopy);
+                readThreadsRegs(&crashedProcessStatus, crashedThread, &uContextCopy);
 
 
                 crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);

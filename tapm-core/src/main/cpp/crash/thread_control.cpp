@@ -51,6 +51,7 @@ void suspendThreads(LinkedList *inputThreadsStatus) {
                 }
             }
         }
+        iterator.next();
     }
 }
 
@@ -63,6 +64,7 @@ void resumeThreads(LinkedList *inputThreadsStatus) {
             ptrace(PTRACE_DETACH, status->thread->tid, nullptr, nullptr);
             status->isSuspend = false;
         }
+        iterator.next();
     }
 }
 
@@ -231,5 +233,6 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, tApmThread *crashedThread, 
                 readRegsFromPtrace(status);
             }
         }
+        iterator.next();
     }
 }
