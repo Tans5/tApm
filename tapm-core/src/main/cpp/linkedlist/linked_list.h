@@ -28,7 +28,7 @@ typedef struct LinkedList {
 
     void* popLast();
 
-    void forEach(bool (*action)(void *value)) const;
+    void forEach(void *context, bool (*action)(void *value, void *context)) const;
 
 } LinkedList;
 

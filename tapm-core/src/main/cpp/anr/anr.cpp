@@ -16,10 +16,8 @@
 #include "../tapm_log.h"
 #include "xhook.h"
 #include "../time/tapm_time.h"
+#include "../thread/tapm_thread.h"
 
-static bool isNumberStr(const char* str, int maxLen);
-
-static int32_t getSignalCatcherTid();
 
 static int32_t hookWriteMethod(bool isAddHook);
 
@@ -48,60 +46,6 @@ static volatile Anr* workingAnrMonitor = nullptr;
 static volatile AnrData* writingAnrData = nullptr;
 
 ssize_t (*origin_write)(int fd, const void *const buf, size_t count) = write;
-
-static bool isNumberStr(const char *str, int maxLen) {
-    for (int i = 0; i < maxLen; i ++) {
-        char c = str[i];
-        if (c == '\0') {
-            break;
-        }
-        if (c >= '0' && c <= '9') {
-            continue;
-        } else {
-            return false;
-        }
-    }
-    return true;
-}
-
-static int32_t getSignalCatcherTid() {
-    pid_t myPid = getpid();
-    char processPath[SIGNAL_CATCHER_BUFFER_SIZE];
-    int size = sprintf(processPath, "/proc/%d/task", myPid);
-    if (size >= SIGNAL_CATCHER_BUFFER_SIZE) {
-        LOGE("Read proc path fail, read buffer size: %d", size);
-        return -1;
-    }
-    DIR *processDir = opendir(processPath);
-    if (processDir) {
-        int32_t tid = -1;
-        dirent * child = readdir(processDir);
-        while (child != nullptr) {
-            if (isNumberStr(child->d_name, 256)) {
-                char filePath[SIGNAL_CATCHER_BUFFER_SIZE];
-                size = sprintf(filePath, "%s/%s/comm", processPath, child->d_name);
-                if (size >= SIGNAL_CATCHER_BUFFER_SIZE) {
-                    continue;
-                }
-                char threadName[SIGNAL_CATCHER_BUFFER_SIZE];
-                int fd = open(filePath, O_RDONLY);
-                size = read(fd, threadName, SIGNAL_CATCHER_BUFFER_SIZE);
-                close(fd);
-                threadName[size - 1] = '\0';
-                if (strcmp(threadName, "Signal Catcher") == 0) {
-                    tid = atoi(child->d_name);
-                    break;
-                }
-            }
-            child = readdir(processDir);
-        }
-        closedir(processDir);
-        return tid;
-    } else {
-        LOGE("Read process dir fail.");
-    }
-    return - 1;
-}
 
 static int32_t hookWriteMethod(bool isAddHook) {
     int apiLevel = android_get_device_api_level();
@@ -250,10 +194,12 @@ int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject) {
     jniEnv->GetJavaVM(&this->jvm);
     this->jAnrMonitor = jniEnv->NewGlobalRef(j_AnrObject);
 
-    this->signalCatcherTid = getSignalCatcherTid();
-    int32_t ret = 0;
+    tApmThread signalCatcher;
+    int ret = findThreadByName(getpid(), "Signal Catcher", &signalCatcher);
+
+    this->signalCatcherTid = signalCatcher.tid;
     struct sigaction newSigaction {};
-    if (this->signalCatcherTid <= 0) {
+    if (ret != 0) {
         LOGE("Get signal catcher tid fail.");
         ret = -1;
         goto End;

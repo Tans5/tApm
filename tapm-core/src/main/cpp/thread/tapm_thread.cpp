@@ -40,6 +40,10 @@ void forEachThreads(pid_t pid, void * context, bool (*action)(const pid_t tid, c
                     continue;
                 }
                 size = read(fd, threadName, BUFFER_SIZE);
+                if (size > 0) {
+                    // remove '\n'
+                    threadName[size - 1] = '\0';
+                }
                 close(fd);
                 auto isGoOn = action(tid, threadName, size, context);
                 if (!isGoOn) {
@@ -53,7 +57,16 @@ void forEachThreads(pid_t pid, void * context, bool (*action)(const pid_t tid, c
 }
 
 void getProcessThreads(pid_t pid, LinkedList *output) {
-    // TODO:
+
+    auto action = [](const pid_t tid, const char * tName, int tNameSize, void* c) -> bool {
+        auto context = static_cast<LinkedList *>(c);
+        auto thread = new tApmThread;
+        thread->tid = tid;
+        memcpy(&thread->threadName, tName, tNameSize);
+        context->addToLast(thread);
+        return true;
+    };
+    forEachThreads(pid, output, action);
 }
 
 typedef struct FindThreadByNameContext {
@@ -84,11 +97,34 @@ int findThreadByName(pid_t pid, const char * threadName, tApmThread *output) {
     }
 }
 
+typedef struct FindThreadByTidContext {
+    pid_t targetTid = 0;
+    tApmThread * output = nullptr;
+} FindThreadByTidContext;
 
 int findThreadByTid(pid_t pid, pid_t tid, tApmThread * output) {
-    // TODO:
+    FindThreadByTidContext context {
+        .targetTid = tid,
+        .output = output
+    };
 
-    return -1;
+    auto action =  [](const pid_t tid, const char * tName, int tNameSize, void* c) -> bool {
+        auto context = static_cast<FindThreadByTidContext *>(c);
+        if (tid == context->targetTid) {
+            context->output->tid = tid;
+            memcpy(context->output->threadName, tName, tNameSize);
+            return false;
+        } else {
+            return true;
+        }
+    };
+    forEachThreads(pid, &context, action);
+
+    if (output->tid != 0) {
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 
