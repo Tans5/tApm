@@ -3,6 +3,26 @@
 //
 #include "linked_list.h"
 
+bool Iterator::containValue() const {
+    if (node != rootNodePtr) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void *Iterator::value() const {
+    return node->value;
+}
+
+void Iterator::next() {
+    node = node->next;
+}
+
+void Iterator::previous() {
+    node = node->previous;
+}
+
 void LinkedList::addToFirst(void *v) {
     auto node = new Node;
     node->value = v;
@@ -92,4 +112,12 @@ void LinkedList::forEach(void *context, bool (*action)(void * value, void* conte
         }
         node = node->next;
     }
+}
+
+void LinkedList::iterator(Iterator *output) const {
+    output->node = head;
+}
+
+void LinkedList::iteratorFromTali(Iterator *output) const {
+    output->node = tail;
 }

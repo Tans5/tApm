@@ -15,6 +15,18 @@ static Node rootNode;
 
 static Node *rootNodePtr = &rootNode;
 
+typedef struct Iterator {
+    Node *node = nullptr;
+
+    bool containValue() const;
+
+    void* value() const;
+
+    void next();
+
+    void previous();
+} Iterator;
+
 typedef struct LinkedList {
     Node * head = rootNodePtr;
     Node * tail = rootNodePtr;
@@ -29,6 +41,10 @@ typedef struct LinkedList {
     void* popLast();
 
     void forEach(void *context, bool (*action)(void *value, void *context)) const;
+
+    void iterator(Iterator *output) const;
+
+    void iteratorFromTali(Iterator *output) const;
 
 } LinkedList;
 

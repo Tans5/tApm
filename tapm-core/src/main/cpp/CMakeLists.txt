@@ -37,6 +37,8 @@ add_library(
         thread/tapm_thread.cpp
         anr/anr.h
         anr/anr.cpp
+        crash/thread_control.h
+        crash/thread_control.cpp
         crash/crash.h
         crash/crash.cpp
 )

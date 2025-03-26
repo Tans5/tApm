@@ -10,9 +10,12 @@
 #include <cerrno>
 #include <cstdlib>
 #include <sys/wait.h>
+#include <sys/ptrace.h>
 #include "crash.h"
 #include "../time/tapm_time.h"
 #include "../tapm_log.h"
+#include "../thread//tapm_thread.h"
+#include "thread_control.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -54,6 +57,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
             if (ret != 0 && errno != EINVAL) {
                 LOGE("Set process tracer fail: %d", ret);
                 ret = -1;
+                goto End;
             } else {
                 ret = 0;
             }
@@ -67,7 +71,38 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 LOGD("Child process started.");
                 alarm(30);
                 int childProcessRet = 0;
-                auto crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);
+                int crashFileFd = -1;
+                LinkedList crashedProcess;
+                LinkedList crashedProcessStatus;
+                tApmThread *crashedThread = nullptr;
+
+                // Get all process and find crash thread.
+                getProcessThreads(crashedPid, &crashedProcess);
+                Iterator crashThreadIterator;
+                crashedProcess.iterator(&crashThreadIterator);
+                while(crashThreadIterator.containValue()) {
+                    auto thread = static_cast<tApmThread *>(crashThreadIterator.value());
+                    if (thread->tid == crashedTid) {
+                        crashedThread = thread;
+                        break;
+                    }
+                }
+                if (crashedThread == nullptr) {
+                    childProcessRet = -1;
+                    LOGE("Didn't find crash thread: %d", crashedTid);
+                    goto ChildProcessEnd;
+                }
+
+
+                // Suspend all threads
+                initThreadStatus(&crashedProcess, &crashedProcessStatus);
+                suspendThreads(&crashedProcessStatus);
+
+                // Read all threads register value.
+                // readThreadsRegs(&crashedProcessStatus, crashedThread, &uContextCopy);
+
+
+                crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);
                 if (crashFileFd == -1) {
                     LOGE("Create crash file fail");
                     childProcessRet = -1;
@@ -76,9 +111,19 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 
                 // TODO:
 
+
                 ChildProcessEnd:
                 if (crashFileFd != -1) {
                     close(crashFileFd);
+                }
+                resumeThreads(&crashedProcessStatus);
+                while (crashedProcess.size > 0) {
+                    auto v = crashedProcess.popFirst();
+                    free(v);
+                }
+                while(crashedProcessStatus.size > 0) {
+                    auto v = crashedProcessStatus.popFirst();
+                    free(v);
                 }
                 _Exit(childProcessRet);
             } else if (childPid > 0) {
