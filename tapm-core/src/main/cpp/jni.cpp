@@ -3,8 +3,10 @@
 //
 
 #include <jni.h>
+#include <cstdlib>
 #include "anr/anr.h"
 #include "crash/crash.h"
+#include <android/set_abort_message.h>
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_tans_tapm_monitors_AnrMonitor_registerAnrMonitorNative(
@@ -51,9 +53,11 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_tans_tapm_monitors_NativeCrashMonitor_testNativeCrash(
         JNIEnv *env,
         jobject javaAnrMonitor) {
-    Crash *c = nullptr;
-    JNIEnv *e = nullptr;
-    c->jvm->GetEnv(reinterpret_cast<void **>(&e), JNI_VERSION_1_6);
+//    Crash *c = nullptr;
+//    JNIEnv *e = nullptr;
+//    c->jvm->GetEnv(reinterpret_cast<void **>(&e), JNI_VERSION_1_6);
+      android_set_abort_message("Test abort msg");
+      abort();
 }
 
 extern "C" JNIEXPORT void JNICALL

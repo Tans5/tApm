@@ -6,6 +6,8 @@
 #include <fstream>
 #include <sstream>
 #include <cstdint>
+#include <sys/uio.h>
+#include "process_read.h"
 #include "../tapm_log.h"
 #include "memory_maps.h"
 
@@ -51,4 +53,55 @@ void parseMemoryMaps(pid_t pid, LinkedList *output) {
         memcpy(memoryMap->pathname, chars, size);
     }
     file.close();
+}
+
+bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
+    int apiLevel = android_get_device_api_level();
+    if (apiLevel >= 29) {
+        Iterator iterator;
+        maps->iterator(&iterator);
+        MemoryMap * abortMsgMap = nullptr;
+        while (iterator.containValue()) {
+            auto m = static_cast<MemoryMap *>(iterator.value());
+            if (strcmp(m->pathname, ANDROID_10_ABORT_MSG_MAP_PATH) == 0 && m->permissions.read && m->endAddr > m->startAddr) {
+                abortMsgMap = m;
+                break;
+            }
+            iterator.next();
+        }
+        if (abortMsgMap != nullptr) {
+            size_t mapSize = abortMsgMap->endAddr - abortMsgMap->startAddr;
+            if (mapSize <= (sizeof(uint64_t) * 2 + sizeof(size_t) + 1)) {
+                return false;
+            }
+            uint64_t readAddress = abortMsgMap->startAddr;
+            uint64_t code;
+            processRead(pid, readAddress, &code, sizeof(code));
+            if (code != ANDROID_10_ABORT_MSG_MAGIC_1) {
+                return false;
+            }
+            readAddress += sizeof(code);
+            processRead(pid, readAddress, &code, sizeof(code));
+            if (code != ANDROID_10_ABORT_MSG_MAGIC_2) {
+                return false;
+            }
+            readAddress += sizeof(code);
+            size_t msgSize;
+            processRead(pid, readAddress, &msgSize, sizeof(msgSize));
+            if (msgSize <= 0) {
+                return false;
+            }
+            readAddress += sizeof(msgSize);
+            if (processRead(pid, readAddress, output, msgSize) > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    } else {
+        // TODO: Support blow Android 10
+        return false;
+    }
 }

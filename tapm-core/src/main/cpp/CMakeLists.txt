@@ -41,6 +41,8 @@ add_library(
         crash/thread_control.cpp
         crash/memory_maps.h
         crash/memory_maps.cpp
+        crash/process_read.h
+        crash/process_read.cpp
         crash/crash.h
         crash/crash.cpp
 )

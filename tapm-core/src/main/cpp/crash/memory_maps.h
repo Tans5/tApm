@@ -9,6 +9,11 @@
 #include <sys/types.h>
 #include <../linkedlist/linked_list.h>
 
+#define ANDROID_10_ABORT_MSG_MAP_PATH "[anon:abort message]"
+
+#define ANDROID_10_ABORT_MSG_MAGIC_1 0xb18e40886ac388f0ULL
+#define ANDROID_10_ABORT_MSG_MAGIC_2 0xc6dfba755a1de0b5ULL
+
 typedef struct MemoryMap {
     uint64_t startAddr;
     uint64_t endAddr;
@@ -28,5 +33,7 @@ typedef struct MemoryMap {
 } MemoryMap;
 
 void parseMemoryMaps(pid_t pid, LinkedList *output);
+
+bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output);
 
 #endif //TAPM_MEMORY_MAPS_H

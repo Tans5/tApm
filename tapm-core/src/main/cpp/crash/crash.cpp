@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <iostream>
 #include "crash.h"
 #include "../time/tapm_time.h"
 #include "../tapm_log.h"
@@ -112,6 +113,12 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                     LOGD("Start=%llx, End=%llx, Path=%s", map->startAddr, map->endAddr, map->pathname);
                     return true;
                 });
+
+                char abortMsg[256];
+                if (tryFindAbortMsg(crashedPid, &memoryMaps, abortMsg)) {
+                    std::string s(abortMsg);
+                    LOGD("Found abort msg: %s", s.c_str());
+                }
 
                 crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);
                 if (crashFileFd == -1) {
