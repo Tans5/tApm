@@ -19,6 +19,7 @@ void parseMemoryMaps(pid_t pid, LinkedList *output) {
         return;
     }
     string line;
+    string path;
     while(getline(file, line)) {
         istringstream stream(line);
         auto memoryMap = new MemoryMap;
@@ -32,15 +33,22 @@ void parseMemoryMaps(pid_t pid, LinkedList *output) {
         memoryMap->permissions.exec  = (permissions[2] == 'x');
         memoryMap->permissions.shared= (permissions[3] == 's');
 
-        stream >> std::hex >> memoryMap->offset;
+        stream >> hex >> memoryMap->offset;
 
         stream >> device;
         sscanf(device, "%x:%x", &memoryMap->device.major, &memoryMap->device.minor);
 
-        stream >> std::dec >> memoryMap->inode;
+        stream >> dec >> memoryMap->inode;
 
-        stream >> std::ws; // Skip empty.
-        stream >> memoryMap->pathname;
+        stream >> ws; // Skip empty.
+        path.clear();
+        getline(stream, path);
+        auto chars = path.c_str();
+        auto size = path.size();
+        if (size > 256) {
+            size = 256;
+        }
+        memcpy(memoryMap->pathname, chars, size);
     }
     file.close();
 }
