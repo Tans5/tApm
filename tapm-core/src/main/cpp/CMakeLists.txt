@@ -39,6 +39,8 @@ add_library(
         anr/anr.cpp
         crash/thread_control.h
         crash/thread_control.cpp
+        crash/memory_maps.h
+        crash/memory_maps.cpp
         crash/crash.h
         crash/crash.cpp
 )

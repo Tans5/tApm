@@ -23,13 +23,13 @@
 #endif
 
 static int CRASH_SIGNAL[8] = {
-       SIGABRT,
-       SIGBUS,
-       SIGFPE,
-       SIGILL,
-       SIGSEGV,
-       SIGTRAP,
-       SIGSYS,
+       SIGABRT, // 程序主动调用 abort() 函数终止自身
+       SIGBUS, // 对齐错误/物理地址异常
+       SIGFPE, // 浮点运算错误或整数算术异常
+       SIGILL, // 非法指令执行
+       SIGSEGV, // 非法内存访问（空指针、越界等）
+       SIGTRAP, // 调试断点触发
+       SIGSYS, // 非法或无效的系统调用执行
        SIGSTKFLT
 };
 

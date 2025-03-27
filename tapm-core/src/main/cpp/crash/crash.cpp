@@ -14,8 +14,9 @@
 #include "crash.h"
 #include "../time/tapm_time.h"
 #include "../tapm_log.h"
-#include "../thread//tapm_thread.h"
+#include "../thread/tapm_thread.h"
 #include "thread_control.h"
+#include "../crash/memory_maps.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -75,6 +76,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 LinkedList crashedProcess;
                 LinkedList crashedProcessStatus;
                 tApmThread *crashedThread = nullptr;
+                LinkedList memoryMaps;
 
                 // Get all process and find crash thread.
                 getProcessThreads(crashedPid, &crashedProcess);
@@ -102,6 +104,14 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 // Read all threads register value.
                 readThreadsRegs(&crashedProcessStatus, crashedThread, &uContextCopy);
 
+                // Parse memory maps.
+                parseMemoryMaps(crashedPid, &memoryMaps);
+
+                memoryMaps.forEach(nullptr, [] (void *m, void *c) -> bool {
+                    auto map = static_cast<MemoryMap *> (m);
+                    LOGD("Start=%llx, End=%llx, Path=%s", map->startAddr, map->endAddr, map->pathname);
+                    return true;
+                });
 
                 crashFileFd = open(crashFilePath, O_CREAT | O_RDWR, 0666);
                 if (crashFileFd == -1) {
@@ -124,6 +134,10 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 }
                 while(crashedProcessStatus.size > 0) {
                     auto v = crashedProcessStatus.popFirst();
+                    free(v);
+                }
+                while(memoryMaps.size > 0) {
+                    auto v = memoryMaps.popFirst();
                     free(v);
                 }
                 _Exit(childProcessRet);
