@@ -18,6 +18,8 @@
 #include "../thread/tapm_thread.h"
 #include "thread_control.h"
 #include "../crash/memory_maps.h"
+#include "file_mmap.h"
+#include "t_elf.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -110,7 +112,13 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 
                 memoryMaps.forEach(nullptr, [] (void *m, void *c) -> bool {
                     auto map = static_cast<MemoryMap *> (m);
-                    LOGD("Start=%llx, End=%llx, Offset=%llx, Inode=%lld, Path=%s", map->startAddr, map->endAddr, map->offset, map->inode, map->pathname);
+                    Mapped fileMapped;
+                    bool isElf = false;
+                    if (map->permissions.read && fileMmapRead(map->pathname, map->offset, 5, &fileMapped)) {
+                        isElf = isElfFile(fileMapped.data, fileMapped.dataSize);
+                    }
+                    LOGD("Start=%llx, End=%llx, Offset=%llx, Path=%s, IsElf=%d, R=%d, E=%d", map->startAddr, map->endAddr, map->offset, map->pathname, isElf, map->permissions.read, map->permissions.exec);
+                    recycleMmap(&fileMapped);
                     return true;
                 });
 

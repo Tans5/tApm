@@ -11,6 +11,7 @@ typedef struct Mapped {
     int fileFd = -1;
     void * mmap = nullptr;
     uint8_t * data = nullptr;
+    uint64_t dataSize = 0;
     uint64_t offset = 0;
     uint64_t mappedSize = 0;
 } Mapped;

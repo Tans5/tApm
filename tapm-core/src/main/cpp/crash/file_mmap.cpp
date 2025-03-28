@@ -35,20 +35,21 @@ bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requi
     // 计算当前偏移量在内存页内的偏移，等于：offset % page_size
     uint64_t pageOffset = offset & (pageSize - 1);
 
-    uint64_t maxMappedSize = fileSize - alignOffset;
-    if ((offset + pageOffset) < maxMappedSize) {
+    uint64_t mapSize = fileSize - alignOffset;
+    if ((offset + requireMinSize) > mapSize) {
         return false;
     }
 
-    void * mapped = mmap(nullptr, maxMappedSize, PROT_READ, MAP_PRIVATE, fileFd, (off_t) alignOffset);
+    void * mapped = mmap(nullptr, mapSize, PROT_READ, MAP_PRIVATE, fileFd, (off_t) alignOffset);
     if (mapped == MAP_FAILED) {
         return false;
     }
     output->fileFd = fileFd;
     output->offset = offset;
     output->mmap = mapped;
-    output->data = (uint8_t *) mapped + alignOffset + pageOffset;
-    output->mappedSize = maxMappedSize;
+    output->data = (uint8_t *) mapped + pageOffset + offset;
+    output->mappedSize = mapSize;
+    output->dataSize = mapSize - pageOffset - offset;
     return true;
 }
 
@@ -64,4 +65,7 @@ void recycleMmap(Mapped *toRecycle) {
         close(toRecycle->fileFd);
         toRecycle->fileFd = -1;
     }
+    toRecycle->dataSize = 0;
+    toRecycle->offset = 0;
+    toRecycle->mappedSize = 0;
 }
