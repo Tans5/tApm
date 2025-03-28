@@ -110,7 +110,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 
                 memoryMaps.forEach(nullptr, [] (void *m, void *c) -> bool {
                     auto map = static_cast<MemoryMap *> (m);
-                    LOGD("Start=%llx, End=%llx, Path=%s", map->startAddr, map->endAddr, map->pathname);
+                    LOGD("Start=%llx, End=%llx, Offset=%llx, Inode=%lld, Path=%s", map->startAddr, map->endAddr, map->offset, map->inode, map->pathname);
                     return true;
                 });
 
