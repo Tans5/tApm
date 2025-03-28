@@ -24,7 +24,7 @@ bool fileMmapRead(const char* filePath, uint64_t offset, uint64_t requireMinSize
 }
 
 bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requireMinSize, Mapped *output) {
-    if (offset + requireMinSize > fileSize) {
+    if (offset + requireMinSize > fileSize || fileFd < 0 || !output) {
         return false;
     }
     // 获取系统页大小，通常是 4096
@@ -36,7 +36,8 @@ bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requi
     uint64_t pageOffset = offset & (pageSize - 1);
 
     uint64_t mapSize = fileSize - alignOffset;
-    if ((offset + requireMinSize) > mapSize) {
+
+    if (mapSize - pageOffset < 0) {
         return false;
     }
 
@@ -47,9 +48,9 @@ bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requi
     output->fileFd = fileFd;
     output->offset = offset;
     output->mmap = mapped;
-    output->data = (uint8_t *) mapped + pageOffset + offset;
+    output->data = (uint8_t *) mapped + pageOffset;
     output->mappedSize = mapSize;
-    output->dataSize = mapSize - pageOffset - offset;
+    output->dataSize = mapSize - pageOffset;
     return true;
 }
 
