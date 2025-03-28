@@ -45,6 +45,8 @@ add_library(
         crash/t_regs.cpp
         crash/process_read.h
         crash/process_read.cpp
+        crash/file_mmap.h
+        crash/file_mmap.cpp
         crash/crash.h
         crash/crash.cpp
 )
