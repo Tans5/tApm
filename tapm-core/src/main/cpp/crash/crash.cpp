@@ -136,11 +136,17 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                         LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
                              elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize, elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
 
-                        LOGD("Program Header: ");
+                        LOGD("Program Headers: ");
                         crashedElf.programHeaders.forEach(nullptr, [](void *p, void *) {
                             auto ph = static_cast<T_ProgramHeader *>(p);
                             LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset, ph->sizeInFile, ph->sizeInMemory);
                             return true;
+                        });
+                        LOGD("Section Headers: ");
+                        crashedElf.sectionHeaders.forEach(nullptr, [](void *s, void *) {
+                            auto sh = static_cast<T_SectionHeader *>(s);
+                            LOGD("Name=%s", sh->name);
+                           return true;
                         });
                     } else {
                         LOGE("Parse crash elf fail.");

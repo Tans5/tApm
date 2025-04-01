@@ -32,11 +32,27 @@ typedef struct T_ProgramHeader {
     uint32_t align = 0;
 } T_ProgramHeader;
 
+typedef struct T_SectionHeader {
+    char name[256] {};
+    uint32_t type = 0;
+    uint32_t flags = 0;
+    uint32_t offset = 0;
+    uint64_t virtualAddress = 0;
+    uint32_t sizeInFile = 0;
+    uint32_t link = 0;
+    uint32_t info = 0;
+    uint32_t align = 0;
+    uint32_t entrySize = 0;
+} T_SectionHeader;
+
 typedef struct T_Elf {
     T_ElfHeader elfHeader;
     LinkedList programHeaders;
+    LinkedList sectionHeaders;
     Mapped * fileMapped = nullptr;
 } T_Elf;
+
+void readString(char* dst, const char * src, int startIndex, int maxSize);
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 

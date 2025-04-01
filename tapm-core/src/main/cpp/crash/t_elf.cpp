@@ -8,6 +8,17 @@
 #include <malloc.h>
 #include "file_mmap.h"
 #include "memory_maps.h"
+#include "../tapm_log.h"
+
+void readString(char* dst, const char * src, int startIndex, int maxSize) {
+    for (int i = 0; i < maxSize; i ++) {
+        char c = src[startIndex + i];
+        dst[i] = c;
+        if (c == '\0') {
+            break;
+        }
+    }
+}
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize) {
     if (buffer == nullptr || bufferSize < SELFMAG + 1) {
@@ -61,6 +72,30 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             output->programHeaders.addToLast(h);
         }
 
+        // Read section headers
+        // First find .shstrtab section
+        position = output->elfHeader.sectionHeaderOffset + output->elfHeader.sectionHeaderEntrySize * output->elfHeader.sectionNameStrIndex;
+        ElfW(Shdr) sectionHeader;
+        memcpy(&sectionHeader, buffer + position, sizeof(sectionHeader));
+        char shStrTab[sectionHeader.sh_size];
+        memcpy(shStrTab, buffer + sectionHeader.sh_offset, sectionHeader.sh_size);
+        position = output->elfHeader.sectionHeaderOffset;
+        for (int i = 0; i < output->elfHeader.sectionHeaderNum; i ++) {
+            memcpy(&sectionHeader, buffer + position, sizeof(sectionHeader));
+            position += sizeof(sectionHeader);
+            auto h = new T_SectionHeader;
+            readString(h->name, shStrTab, (int) sectionHeader.sh_name, 256);
+            h->type = sectionHeader.sh_type;
+            h->offset = sectionHeader.sh_offset;
+            h->flags = sectionHeader.sh_flags;
+            h->virtualAddress = sectionHeader.sh_addr;
+            h->sizeInFile = sectionHeader.sh_size;
+            h->link = sectionHeader.sh_link;
+            h->info = sectionHeader.sh_info;
+            h->align = sectionHeader.sh_addralign;
+            h->entrySize = sectionHeader.sh_entsize;
+            output->sectionHeaders.addToLast(h);
+        }
         return true;
     } else {
         return false;
@@ -90,6 +125,10 @@ void recycleElf(T_Elf *toRecycle) {
     }
     while (toRecycle->programHeaders.size > 0) {
         auto v = toRecycle->programHeaders.popFirst();
+        free(v);
+    }
+    while (toRecycle->sectionHeaders.size > 0) {
+        auto v = toRecycle->sectionHeaders.popFirst();
         free(v);
     }
 }
