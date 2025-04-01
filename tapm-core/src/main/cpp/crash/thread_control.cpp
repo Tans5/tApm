@@ -9,7 +9,7 @@
 #include "../tapm_log.h"
 
 
-void initThreadStatus(LinkedList *inputThreads, LinkedList *outputThreadsStatus) {
+void initThreadStatus(LinkedList *inputThreads, pid_t crashThreadTid, LinkedList *outputThreadsStatus, ThreadStatus **outputCrashThreadStatus) {
     Iterator threadsIterator;
     inputThreads->iterator(&threadsIterator);
     while (threadsIterator.containValue()) {
@@ -17,6 +17,9 @@ void initThreadStatus(LinkedList *inputThreads, LinkedList *outputThreadsStatus)
         auto threadStatus = new ThreadStatus;
         threadStatus->thread = t;
         outputThreadsStatus->addToLast(threadStatus);
+        if (t->tid == crashThreadTid) {
+            (*outputCrashThreadStatus) = threadStatus;
+        }
         threadsIterator.next();
     }
 }
@@ -65,13 +68,13 @@ void resumeThreads(LinkedList *inputThreadsStatus) {
     }
 }
 
-void readThreadsRegs(LinkedList *inputThreadsStatus, tApmThread *crashedThread, ucontext_t *crashThreadUContext) {
+void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashThreadTid, ucontext_t *crashThreadUContext) {
     Iterator iterator;
     inputThreadsStatus->iterator(&iterator);
 
     while (iterator.containValue()) {
         auto status = static_cast<ThreadStatus *>(iterator.value());
-        if (status->thread->tid == crashedThread->tid) {
+        if (status->thread->tid == crashThreadTid) {
             readRegsFromUContext(status->regs, crashThreadUContext);
             status->isGetRegs = true;
             status->pc = getPc(status->regs);
@@ -87,4 +90,17 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, tApmThread *crashedThread, 
         }
         iterator.next();
     }
+}
+
+ThreadStatus *findThreadStatus(LinkedList *inputThreadStatus, pid_t tid) {
+    Iterator iterator;
+    inputThreadStatus->iterator(&iterator);
+    while (iterator.containValue()) {
+        auto threadStatus = static_cast<ThreadStatus *>(iterator.value());
+        if (threadStatus->thread->tid == tid) {
+            return threadStatus;
+        }
+        iterator.next();
+    }
+    return nullptr;
 }

@@ -78,34 +78,25 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 int crashFileFd = -1;
                 LinkedList crashedProcess;
                 LinkedList crashedProcessStatus;
-                tApmThread *crashedThread = nullptr;
+                ThreadStatus *crashedThreadStatus = nullptr;
                 LinkedList memoryMaps;
+                MemoryMap *crashedMemoryMap = nullptr;
+                T_Elf crashedElf;
 
-                // Get all process and find crash thread.
+                // Get all threads
                 getProcessThreads(crashedPid, &crashedProcess);
-                Iterator crashThreadIterator;
-                crashedProcess.iterator(&crashThreadIterator);
-                while(crashThreadIterator.containValue()) {
-                    auto thread = static_cast<tApmThread *>(crashThreadIterator.value());
-                    if (thread->tid == crashedTid) {
-                        crashedThread = thread;
-                        break;
-                    }
-                    crashThreadIterator.next();
-                }
-                if (crashedThread == nullptr) {
-                    childProcessRet = -1;
-                    LOGE("Didn't find crash thread: %d", crashedTid);
-                    goto ChildProcessEnd;
-                }
-
 
                 // Suspend all threads
-                initThreadStatus(&crashedProcess, &crashedProcessStatus);
+                initThreadStatus(&crashedProcess, crashedTid, &crashedProcessStatus, &crashedThreadStatus);
+                if (crashedThreadStatus == nullptr) {
+                    childProcessRet = -1;
+                    LOGE("Don't find crash thread.");
+                    goto ChildProcessEnd;
+                }
                 suspendThreads(&crashedProcessStatus);
 
                 // Read all threads register value.
-                readThreadsRegs(&crashedProcessStatus, crashedThread, &uContextCopy);
+                readThreadsRegs(&crashedProcessStatus, crashedTid, &uContextCopy);
 
                 // Parse memory maps.
                 parseMemoryMaps(crashedPid, &memoryMaps);
@@ -122,16 +113,27 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 //                    return true;
 //                });
 
-                crashedProcessStatus.forEach(&memoryMaps, [](void *ts, void * memoryMaps) -> bool {
-                    auto * threadStatus = static_cast<ThreadStatus *>(ts);
-                    auto map = findMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps));
-                    char *mapPath = "";
-                    if (map != nullptr) {
-                        mapPath = map->pathname;
+//                crashedProcessStatus.forEach(&memoryMaps, [](void *ts, void * memoryMaps) -> bool {
+//                    auto * threadStatus = static_cast<ThreadStatus *>(ts);
+//                    auto map = findMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps));
+//                    char *mapPath = "";
+//                    if (map != nullptr) {
+//                        mapPath = map->pathname;
+//                    }
+//                    LOGD("Thread=%s, Tid=%d, PC=0x%x, SP=0x%x, MapPath=%s", threadStatus->thread->threadName, threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, mapPath);
+//                    return true;
+//                });
+
+
+                crashedMemoryMap = findMapByAddress(crashedThreadStatus->pc, &memoryMaps);
+                if (crashedMemoryMap != nullptr) {
+                    if (parseElf(crashedPid, crashedMemoryMap, &crashedElf)) {
+                        LOGD("Parse crash elf success.");
+                    } else {
+                        LOGE("Parse crash elf fail.");
                     }
-                    LOGD("Thread=%s, Tid=%d, PC=0x%x, SP=0x%x, MapPath=%s", threadStatus->thread->threadName, threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, mapPath);
-                    return true;
-                });
+                }
+
 
                 char abortMsg[256];
                 if (tryFindAbortMsg(crashedPid, &memoryMaps, abortMsg)) {
@@ -166,6 +168,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                     auto v = memoryMaps.popFirst();
                     free(v);
                 }
+                recycleElf(&crashedElf);
                 _Exit(childProcessRet);
             } else if (childPid > 0) {
                 LOGD("Waiting child process finish work.");

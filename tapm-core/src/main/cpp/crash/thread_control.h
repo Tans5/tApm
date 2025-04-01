@@ -18,12 +18,14 @@ typedef struct ThreadStatus {
     uintptr_t sp = 0;
 } ThreadStatus;
 
-void initThreadStatus(LinkedList *inputThreads, LinkedList *outputThreadsStatus);
+void initThreadStatus(LinkedList *inputThreads, pid_t crashThreadTid, LinkedList *outputThreadsStatus, ThreadStatus **outputCrashThreadStatus);
 
 void suspendThreads(LinkedList *inputThreadsStatus);
 
 void resumeThreads(LinkedList *inputThreadsStatus);
 
-void readThreadsRegs(LinkedList *inputThreadsStatus, tApmThread *crashedThread, ucontext_t *crashThreadUContext);
+void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashTreadTid, ucontext_t *crashThreadUContext);
+
+ThreadStatus * findThreadStatus(LinkedList *inputThreadStatus, pid_t tid);
 
 #endif //TAPM_THREAD_CONTROL_H
