@@ -110,15 +110,26 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 // Parse memory maps.
                 parseMemoryMaps(crashedPid, &memoryMaps);
 
-                memoryMaps.forEach(nullptr, [] (void *m, void *c) -> bool {
-                    auto map = static_cast<MemoryMap *> (m);
-                    Mapped fileMapped;
-                    bool isElf = false;
-                    if (map->permissions.read && fileMmapRead(map->pathname, map->offset, 5, &fileMapped)) {
-                        isElf = isElfFile(fileMapped.data, fileMapped.dataSize);
+//                memoryMaps.forEach(nullptr, [] (void *m, void *c) -> bool {
+//                    auto map = static_cast<MemoryMap *> (m);
+//                    Mapped fileMapped;
+//                    bool isElf = false;
+//                    if (map->permissions.read && fileMmapRead(map->pathname, map->offset, 5, &fileMapped)) {
+//                        isElf = isElfFile(fileMapped.data, fileMapped.dataSize);
+//                    }
+//                    LOGD("Start=%llx, End=%llx, Offset=%llx, Path=%s, IsElf=%d, R=%d, E=%d", map->startAddr, map->endAddr, map->offset, map->pathname, isElf, map->permissions.read, map->permissions.exec);
+//                    recycleMmap(&fileMapped);
+//                    return true;
+//                });
+
+                crashedProcessStatus.forEach(&memoryMaps, [](void *ts, void * memoryMaps) -> bool {
+                    auto * threadStatus = static_cast<ThreadStatus *>(ts);
+                    auto map = findMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps));
+                    char *mapPath = "";
+                    if (map != nullptr) {
+                        mapPath = map->pathname;
                     }
-                    LOGD("Start=%llx, End=%llx, Offset=%llx, Path=%s, IsElf=%d, R=%d, E=%d", map->startAddr, map->endAddr, map->offset, map->pathname, isElf, map->permissions.read, map->permissions.exec);
-                    recycleMmap(&fileMapped);
+                    LOGD("Thread=%s, Tid=%d, PC=0x%x, SP=0x%x, MapPath=%s", threadStatus->thread->threadName, threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, mapPath);
                     return true;
                 });
 

@@ -14,6 +14,8 @@ typedef struct ThreadStatus {
     bool isSuspend = false;
     bool isGetRegs = false;
     uintptr_t regs[T_REGS_USER_NUM]{};
+    uintptr_t pc = 0;
+    uintptr_t sp = 0;
 } ThreadStatus;
 
 void initThreadStatus(LinkedList *inputThreads, LinkedList *outputThreadsStatus);

@@ -53,11 +53,10 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_tans_tapm_monitors_NativeCrashMonitor_testNativeCrash(
         JNIEnv *env,
         jobject javaAnrMonitor) {
-//    Crash *c = nullptr;
-//    JNIEnv *e = nullptr;
-//    c->jvm->GetEnv(reinterpret_cast<void **>(&e), JNI_VERSION_1_6);
-      android_set_abort_message("Test abort msg");
-      abort();
+    Crash *c = nullptr;
+    c->crashOutputDir = "Hello, NativeCrash.";
+//      android_set_abort_message("Test abort msg");
+//      abort();
 }
 
 extern "C" JNIEXPORT void JNICALL

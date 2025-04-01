@@ -154,3 +154,11 @@ void readRegsFromUContext(uintptr_t *outputRegs, ucontext_t *context) {
     outputRegs[T_REGS_EIP] = (uintptr_t)context->uc_mcontext.gregs[REG_EIP];
 #endif
 }
+
+uintptr_t getPc(uintptr_t *regs) {
+    return regs[T_REGS_PC];
+}
+
+uintptr_t getSp(uintptr_t *regs) {
+    return regs[T_REGS_SP];
+}

@@ -30,10 +30,13 @@ typedef struct MemoryMap {
     } device;
     uint64_t inode;
     char pathname[256];
+    bool isMapPortDevice = false;
 } MemoryMap;
 
 void parseMemoryMaps(pid_t pid, LinkedList *output);
 
 bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output);
+
+MemoryMap * findMapByAddress(uintptr_t address, LinkedList *maps);
 
 #endif //TAPM_MEMORY_MAPS_H

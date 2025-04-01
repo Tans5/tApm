@@ -198,4 +198,8 @@ int readRegsFromPtrace(pid_t tid, uintptr_t *outputRegs);
 
 void readRegsFromUContext(uintptr_t *regs, ucontext_t *context);
 
+uintptr_t getPc(uintptr_t *regs);
+
+uintptr_t getSp(uintptr_t *regs);
+
 #endif //TAPM_T_REGS_H

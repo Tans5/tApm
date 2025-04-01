@@ -51,6 +51,11 @@ void parseMemoryMaps(pid_t pid, LinkedList *output) {
             size = 256;
         }
         memcpy(memoryMap->pathname, chars, size);
+        if (strncmp(memoryMap->pathname, "/dev/", 5) == 0 && 0 != strncmp(memoryMap->pathname + 5, "ashmem/", 7)) {
+            memoryMap->isMapPortDevice = true;
+        } else {
+            memoryMap->isMapPortDevice = false;
+        }
     }
     file.close();
 }
@@ -104,4 +109,17 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
         // TODO: Support blow Android 10
         return false;
     }
+}
+
+MemoryMap * findMapByAddress(uintptr_t address, LinkedList *maps) {
+    Iterator iterator;
+    maps->iterator(&iterator);
+    while (iterator.containValue()) {
+        auto map = static_cast<MemoryMap *>(iterator.value());
+        if (map->startAddr <= address && map->endAddr > address) {
+            return map;
+        }
+        iterator.next();
+    }
+    return nullptr;
 }

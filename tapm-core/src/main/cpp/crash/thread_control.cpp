@@ -74,10 +74,14 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, tApmThread *crashedThread, 
         if (status->thread->tid == crashedThread->tid) {
             readRegsFromUContext(status->regs, crashThreadUContext);
             status->isGetRegs = true;
+            status->pc = getPc(status->regs);
+            status->sp = getSp(status->regs);
         } else {
             if (status->isSuspend) {
                 if (readRegsFromPtrace(status->thread->tid, status->regs) == 0) {
                     status->isGetRegs = true;
+                    status->pc = getPc(status->regs);
+                    status->sp = getSp(status->regs);
                 }
             }
         }
