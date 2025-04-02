@@ -82,6 +82,7 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 ThreadStatus *crashedThreadStatus = nullptr;
                 LinkedList memoryMaps;
                 MemoryMap *crashedMemoryMap = nullptr;
+                MemoryMap *crashedMemoryMapPrevious = nullptr;
 
                 // Get all threads
                 getProcessThreads(crashedPid, &crashedProcessThreads);
@@ -125,9 +126,9 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 //                });
 
 
-                crashedMemoryMap = findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps);
+                findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap, &crashedMemoryMapPrevious);
                 if (crashedMemoryMap != nullptr) {
-                    if (tryLoadElf(crashedMemoryMap)) {
+                    if (tryLoadElf(crashedMemoryMap, crashedMemoryMapPrevious)) {
                         auto crashedElf = crashedMemoryMap->elf;
                         LOGD("Parse crash elf success.");
                         auto elfHeader = crashedElf->elfHeader;

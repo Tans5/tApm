@@ -42,9 +42,9 @@ void parseMemoryMaps(pid_t pid, LinkedList *output);
 
 bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output);
 
-MemoryMap *findMemoryMapByAddress(uintptr_t address, LinkedList *maps);
+bool findMemoryMapByAddress(uintptr_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous);
 
-bool tryLoadElf(MemoryMap *memoryMap);
+bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap);
 
 void recycleMemoryMaps(LinkedList *toRecycle);
 
