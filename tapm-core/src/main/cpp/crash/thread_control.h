@@ -28,4 +28,6 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashTreadTid, uconte
 
 ThreadStatus * findThreadStatus(LinkedList *inputThreadStatus, pid_t tid);
 
+void recycleThreadsStatus(LinkedList *toRecycle);
+
 #endif //TAPM_THREAD_CONTROL_H

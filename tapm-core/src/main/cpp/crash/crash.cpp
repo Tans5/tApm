@@ -20,6 +20,7 @@
 #include "../crash/memory_maps.h"
 #include "file_mmap.h"
 #include "t_elf.h"
+#include "memory_maps.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -76,27 +77,26 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 alarm(30);
                 int childProcessRet = 0;
                 int crashFileFd = -1;
-                LinkedList crashedProcess;
-                LinkedList crashedProcessStatus;
+                LinkedList crashedProcessThreads;
+                LinkedList crashedProcessThreadsStatus;
                 ThreadStatus *crashedThreadStatus = nullptr;
                 LinkedList memoryMaps;
                 MemoryMap *crashedMemoryMap = nullptr;
-                T_Elf crashedElf;
 
                 // Get all threads
-                getProcessThreads(crashedPid, &crashedProcess);
+                getProcessThreads(crashedPid, &crashedProcessThreads);
 
                 // Suspend all threads
-                initThreadStatus(&crashedProcess, crashedTid, &crashedProcessStatus, &crashedThreadStatus);
+                initThreadStatus(&crashedProcessThreads, crashedTid, &crashedProcessThreadsStatus, &crashedThreadStatus);
                 if (crashedThreadStatus == nullptr) {
                     childProcessRet = -1;
                     LOGE("Don't find crash thread.");
                     goto ChildProcessEnd;
                 }
-                suspendThreads(&crashedProcessStatus);
+                suspendThreads(&crashedProcessThreadsStatus);
 
                 // Read all threads register value.
-                readThreadsRegs(&crashedProcessStatus, crashedTid, &uContextCopy);
+                readThreadsRegs(&crashedProcessThreadsStatus, crashedTid, &uContextCopy);
 
                 // Parse memory maps.
                 parseMemoryMaps(crashedPid, &memoryMaps);
@@ -125,11 +125,12 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 //                });
 
 
-                crashedMemoryMap = findMapByAddress(crashedThreadStatus->pc, &memoryMaps);
+                crashedMemoryMap = findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps);
                 if (crashedMemoryMap != nullptr) {
-                    if (parseElf(crashedPid, crashedMemoryMap, &crashedElf)) {
+                    if (tryLoadElf(crashedMemoryMap)) {
+                        auto crashedElf = crashedMemoryMap->elf;
                         LOGD("Parse crash elf success.");
-                        auto elfHeader = crashedElf.elfHeader;
+                        auto elfHeader = crashedElf->elfHeader;
                         LOGD("ELF Header: ");
                         LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
                              elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize, elfHeader.programHeaderNum);
@@ -137,16 +138,16 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                              elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize, elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
 
                         LOGD("Program Headers: ");
-                        crashedElf.programHeaders.forEach(nullptr, [](void *p, void *) {
+                        crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
                             auto ph = static_cast<T_ProgramHeader *>(p);
                             LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset, ph->sizeInFile, ph->sizeInMemory);
                             return true;
                         });
                         LOGD("Section Headers: ");
-                        crashedElf.sectionHeaders.forEach(nullptr, [](void *s, void *) {
+                        crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
                             auto sh = static_cast<T_SectionHeader *>(s);
-                            LOGD("Name=%s", sh->name);
-                           return true;
+                            LOGD("Name=%s, Offset=0x%x, SizeInFile=%d", sh->name, sh->offset, sh->sizeInFile);
+                            return true;
                         });
                     } else {
                         LOGE("Parse crash elf fail.");
@@ -174,20 +175,10 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                 if (crashFileFd != -1) {
                     close(crashFileFd);
                 }
-                resumeThreads(&crashedProcessStatus);
-                while (crashedProcess.size > 0) {
-                    auto v = crashedProcess.popFirst();
-                    free(v);
-                }
-                while(crashedProcessStatus.size > 0) {
-                    auto v = crashedProcessStatus.popFirst();
-                    free(v);
-                }
-                while(memoryMaps.size > 0) {
-                    auto v = memoryMaps.popFirst();
-                    free(v);
-                }
-                recycleElf(&crashedElf);
+                resumeThreads(&crashedProcessThreadsStatus);
+                recycleProcessThreads(&crashedProcessThreads);
+                recycleThreadsStatus(&crashedProcessThreadsStatus);
+                recycleMemoryMaps(&memoryMaps);
                 _Exit(childProcessRet);
             } else if (childPid > 0) {
                 LOGD("Waiting child process finish work.");

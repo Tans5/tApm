@@ -20,4 +20,6 @@ int findThreadByName(pid_t pid, const char * threadName, tApmThread *output);
 
 int findThreadByTid(pid_t pid, pid_t tid, tApmThread * output);
 
+void recycleProcessThreads(LinkedList *toRelease);
+
 #endif //TAPM_TAPM_THREAD_H

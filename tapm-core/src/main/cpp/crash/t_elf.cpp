@@ -102,27 +102,7 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
     }
 }
 
-bool parseElf(pid_t pid, MemoryMap *map, T_Elf *output) {
-    if (map == nullptr) {
-        return false;
-    } else {
-        auto fileMapped = new Mapped;
-        // TODO: Need adjust code.
-        if (fileMmapRead(map->pathname, map->offset, 5, fileMapped)) {
-            output->fileMapped = fileMapped;
-            return parseElf(fileMapped->data, output);
-        } else {
-            delete fileMapped;
-            return false;
-        }
-    }
-}
-
 void recycleElf(T_Elf *toRecycle) {
-    if (toRecycle->fileMapped != nullptr) {
-        recycleMmap(toRecycle->fileMapped);
-        toRecycle->fileMapped = nullptr;
-    }
     while (toRecycle->programHeaders.size > 0) {
         auto v = toRecycle->programHeaders.popFirst();
         free(v);

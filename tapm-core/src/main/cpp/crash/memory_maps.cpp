@@ -10,6 +10,7 @@
 #include "process_read.h"
 #include "../tapm_log.h"
 #include "memory_maps.h"
+#include "file_mmap.h"
 
 void parseMemoryMaps(pid_t pid, LinkedList *output) {
     using namespace std;
@@ -111,7 +112,7 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
     }
 }
 
-MemoryMap * findMapByAddress(uintptr_t address, LinkedList *maps) {
+MemoryMap *findMemoryMapByAddress(uintptr_t address, LinkedList *maps) {
     Iterator iterator;
     maps->iterator(&iterator);
     while (iterator.containValue()) {
@@ -122,4 +123,48 @@ MemoryMap * findMapByAddress(uintptr_t address, LinkedList *maps) {
         iterator.next();
     }
     return nullptr;
+}
+
+bool tryLoadElf(MemoryMap *memoryMap) {
+    if (memoryMap == nullptr) {
+        return false;
+    } else {
+        if (!memoryMap->isLoadedElf) {
+            memoryMap->isLoadedElf = true;
+            // TODO:
+            auto fileMapped = new Mapped;
+            if (fileMmapRead(memoryMap->pathname, memoryMap->offset, 5, fileMapped)) {
+                memoryMap->elfFileMap = fileMapped;
+                auto elf = new T_Elf;
+                auto isSuccess = parseElf(fileMapped->data, elf);
+                if (!isSuccess) {
+                    recycleFileMmap(fileMapped);
+                    delete fileMapped;
+                    memoryMap->elfFileMap = nullptr;
+                } else {
+                    memoryMap->elf = elf;
+                }
+                return isSuccess;
+            } else {
+                delete fileMapped;
+                return false;
+            }
+        } else {
+            return memoryMap->elf != nullptr;
+        }
+    }
+}
+
+void recycleMemoryMaps(LinkedList *toRecycle) {
+    while (toRecycle->size > 0) {
+        auto v = static_cast<MemoryMap *>(toRecycle->popFirst());
+        if (v->elf != nullptr) {
+            recycleElf(v->elf);
+            v->elf = nullptr;
+        }
+        if (v->elfFileMap != nullptr) {
+            recycleFileMmap(v->elfFileMap);
+        }
+        delete v;
+    }
 }

@@ -20,6 +20,6 @@ bool fileMmapRead(const char* filePath, uint64_t offset, uint64_t requireMinSize
 
 bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requireMinSize, Mapped *output);
 
-void recycleMmap(Mapped *toRecycle);
+void recycleFileMmap(Mapped *toRecycle);
 
 #endif //TAPM_FILE_MMAP_H

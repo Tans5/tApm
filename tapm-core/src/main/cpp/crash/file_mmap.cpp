@@ -18,7 +18,7 @@ bool fileMmapRead(const char* filePath, uint64_t offset, uint64_t requireMinSize
     if (fileMmapRead(fileFd, s.st_size, offset, requireMinSize, output)) {
         return true;
     } else {
-        recycleMmap(output);
+        recycleFileMmap(output);
         return false;
     }
 }
@@ -54,7 +54,7 @@ bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requi
     return true;
 }
 
-void recycleMmap(Mapped *toRecycle) {
+void recycleFileMmap(Mapped *toRecycle) {
     if (toRecycle == nullptr) {
         return;
     }

@@ -104,3 +104,10 @@ ThreadStatus *findThreadStatus(LinkedList *inputThreadStatus, pid_t tid) {
     }
     return nullptr;
 }
+
+void recycleThreadsStatus(LinkedList *toRecycle) {
+    while (toRecycle->size > 0) {
+        auto v = static_cast<ThreadStatus *>(toRecycle->popFirst());
+        delete v;
+    }
+}

@@ -127,5 +127,12 @@ int findThreadByTid(pid_t pid, pid_t tid, tApmThread * output) {
     }
 }
 
+void recycleProcessThreads(LinkedList *toRelease) {
+    while (toRelease->size > 0) {
+        auto t = static_cast<tApmThread *>(toRelease->popFirst());
+        delete t;
+    }
+}
+
 
 

@@ -7,8 +7,7 @@
 
 #include <cstdint>
 #include <sys/types.h>
-#include "file_mmap.h"
-#include "memory_maps.h"
+#include "../linkedlist/linked_list.h"
 
 typedef struct T_ElfHeader {
     uint32_t programHeaderOffset = 0;
@@ -49,7 +48,6 @@ typedef struct T_Elf {
     T_ElfHeader elfHeader;
     LinkedList programHeaders;
     LinkedList sectionHeaders;
-    Mapped * fileMapped = nullptr;
 } T_Elf;
 
 void readString(char* dst, const char * src, int startIndex, int maxSize);
@@ -57,8 +55,6 @@ void readString(char* dst, const char * src, int startIndex, int maxSize);
 bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 
 bool parseElf(const uint8_t *buffer, T_Elf *output);
-
-bool parseElf(pid_t pid, MemoryMap *map, T_Elf *output);
 
 void recycleElf(T_Elf *toRecycle);
 
