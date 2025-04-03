@@ -10,7 +10,7 @@
 #include "memory_maps.h"
 #include "../tapm_log.h"
 
-void readString(char* dst, const char * src, int startIndex, int maxSize) {
+void readString(char* dst, const char * src, uint32_t startIndex, int maxSize) {
     for (int i = 0; i < maxSize; i ++) {
         char c = src[startIndex + i];
         dst[i] = c;
@@ -187,6 +187,43 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
     } else {
         return false;
     }
+}
+
+static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSectionHeader, T_SectionHeader *strSectionHeader, uint64_t elfOffset, char * outputSymbolName, uint64_t *outputSymbolOffset) {
+    bool result = false;
+    uint32_t position = symbolSectionHeader->offset;
+    ElfW(Sym) symbol;
+    uint32_t entrySize = symbolSectionHeader->entrySize;
+    uint32_t entryCount = symbolSectionHeader->sizeInFile / entrySize;
+    for (int i = 0; i < entryCount; i ++) {
+        memcpy(&symbol, elfData + position, sizeof(symbol));
+        auto symbolStart = symbol.st_value;
+        auto symbolEnd = symbol.st_size + symbolStart;
+        if (elfOffset >= symbolStart && elfOffset < symbolEnd) {
+            *outputSymbolOffset = (elfOffset - symbolStart);
+            readString(outputSymbolName, reinterpret_cast<const char *>(elfData + strSectionHeader->offset), symbol.st_name, 256);
+            result = true;
+            break;
+        }
+
+        position += sizeof(symbol);
+    }
+
+    return result;
+}
+
+bool readAddressSymbol(T_Elf *elf, uint64_t elfOffset, char *outputSymbolName, uint64_t *outputSymbolOffset) {
+    bool result = false;
+    if (elf->dynsymHeader != nullptr && elf->dynstrHeader != nullptr) {
+        // Find symbol from .dynsym
+        result = readAddressSymbol(elf->buffer, elf->dynsymHeader, elf->dynstrHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
+    }
+    if (!result && elf->symtabHeader != nullptr && elf->strtabHeader != nullptr) {
+        // Find symbol from .symtab
+        result = readAddressSymbol(elf->buffer, elf->symtabHeader, elf->strtabHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
+    }
+
+    return result;
 }
 
 void recycleElf(T_Elf *toRecycle) {

@@ -72,11 +72,13 @@ typedef struct T_Elf {
 
 } T_Elf;
 
-void readString(char* dst, const char * src, int startIndex, int maxSize);
+void readString(char* dst, const char * src, uint32_t startIndex, int maxSize);
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 
 bool parseElf(const uint8_t *buffer, T_Elf *output);
+
+bool readAddressSymbol(T_Elf *elf, uint64_t elfOffset, char *outputSymbolName, uint64_t * outputSymbolOffset);
 
 void recycleElf(T_Elf *toRecycle);
 
