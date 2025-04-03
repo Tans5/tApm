@@ -255,6 +255,14 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
     }
 }
 
+uint64_t convertAddressToElfOffset(MemoryMap *memoryMap, uint64_t address) {
+    uint64_t bias = 0;
+    if (memoryMap->elf != nullptr && memoryMap->elf->loadXHeader != nullptr) {
+        bias = memoryMap->elf->loadXHeader->bias;
+    }
+    return address - (memoryMap->startAddr - memoryMap->elfLoadedStart - bias);
+}
+
 void recycleMemoryMaps(LinkedList *toRecycle) {
     while (toRecycle->size > 0) {
         auto v = static_cast<MemoryMap *>(toRecycle->popFirst());

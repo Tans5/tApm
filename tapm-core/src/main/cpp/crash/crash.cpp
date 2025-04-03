@@ -150,6 +150,11 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                             LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d", sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link, sh->info);
                             return true;
                         });
+                        auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
+                        char symbolName[256];
+                        uint64_t symbolOffset;
+                        readAddressSymbol(crashedElf, elfOffset, symbolName, &symbolOffset);
+                        LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
                     } else {
                         LOGE("Parse crash elf fail.");
                     }

@@ -50,6 +50,8 @@ bool findMemoryMapByAddress(uintptr_t address, LinkedList *maps, MemoryMap **tar
 
 bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap);
 
+uint64_t convertAddressToElfOffset(MemoryMap *memoryMap, uint64_t address);
+
 void recycleMemoryMaps(LinkedList *toRecycle);
 
 #endif //TAPM_MEMORY_MAPS_H
