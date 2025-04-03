@@ -35,6 +35,10 @@ typedef struct MemoryMap {
     bool isMapPortDevice = false;
     T_Elf *elf = nullptr;
     bool isLoadedElf = false;
+    // elf 文件在文件中的偏移，例如 apk 中的 so 库通常就有一个偏移；而单独文件的 so 就没有偏移。
+    uint64_t elfFileStart = 0;
+    // elf 文件被加载到内存中的偏移部分，例如当前的位置只加载了 DYNAMIC 段，这个段在文件中的偏移量为 4096.
+    uint64_t elfLoadedStart = 0;
     Mapped *elfFileMap = nullptr;
 } MemoryMap;
 

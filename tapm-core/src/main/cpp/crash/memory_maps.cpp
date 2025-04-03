@@ -149,7 +149,7 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             //        d9bb6000-d9bb7000 r--p 00019000 fd:00 2666  /system/lib/libjavacrypto.so
             //        d9bb7000-d9bb8000 rw-p 0001a000 fd:00 2666  /system/lib/libjavacrypto.so
             //
-            // Offset 为 0 直接加载 ELF
+            // Offset 为 0 直接加载 ELF 文件，同时没有偏移量
             if (memoryMap->offset == 0) {
                 if (!fileMmapRead(memoryMap->pathname, 0, 5, fileMapped)) {
                     goto LoadFromFileEnd;
@@ -169,13 +169,14 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             //        ce2aa000-d02aa000 r-xp 00000000 00:01 3811617  /dev/ashmem/dalvik-jit-code-cache (deleted)
             // -->    d02aa000-d286d000 r-xp 048b3000 fd:00 623      /system/app/WebViewGoogle/WebViewGoogle.apk
             //        d286d000-d286e000 ---p 00000000 00:00 0
-            // Offset 不为 0，尝试从 offset 位置加载 ELF。
+            // Offset 不为 0，尝试从 offset 位置加载 ELF。比如 apk 中的 so，通常 so 文件的位置相对 apk 有一个加载的偏移量。
             if (!fileMmapRead(memoryMap->pathname, memoryMap->offset, 5, fileMapped)) {
                 goto LoadFromFileEnd;
             }
             if (isElfFile(fileMapped->data, fileMapped->dataSize)) {
                 if (parseElf(fileMapped->data, elf)) {
                     isSuccess = true;
+                    memoryMap->elfFileStart = memoryMap->offset;
                 } else {
                     recycleFileMmap(fileMapped);
                 }
@@ -192,13 +193,14 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             // -->    72a1e000-72a36000 r-xp 0000c000 fd:00 1955  /system/framework/arm/boot-apache-xml.oat
             //        72a36000-72a37000 r--p 00024000 fd:00 1955  /system/framework/arm/boot-apache-xml.oat
             //        72a37000-72a38000 rw-p 00025000 fd:00 1955  /system/framework/arm/boot-apache-xml.oat
-            // Offset 不为 0，但是从 Offset 位置开始加载失败，再次尝试从 0 的位置再次加载.
+            // Offset 不为 0，但是从 Offset 位置开始加载失败，再次尝试从 0 的位置再次加载，有可能加载的 elf 文件不是从头开始加载的只加载 elf 文件中的一部份到内存中。所以再尝试从头开始加载。
             if (!fileMmapRead(memoryMap->pathname, 0, 5, fileMapped)) {
                 goto LoadFromFileEnd;
             }
             if (isElfFile(fileMapped->data, fileMapped->dataSize)) {
                 if (parseElf(fileMapped->data, elf)) {
                     isSuccess = true;
+                    memoryMap->elfLoadedStart = memoryMap->offset;
                 } else {
                     recycleFileMmap(fileMapped);
                 }
@@ -216,7 +218,7 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             // -->    d256d000-d5ff0000 r-xp 01022000 fc:00 1158  /system/app/Chrome/Chrome.apk
             //        d5ff0000-d6009000 rw-p 04aa5000 fc:00 1158  /system/app/Chrome/Chrome.apk
             // 从 Offset 位置和 0 的位置都加载失败了，尝试从前一个 MemoryMap 中再去加载
-            if (previousMemoryMap != nullptr && previousMemoryMap->permissions.read && previousMemoryMap->permissions.exec &&
+            if (previousMemoryMap != nullptr && previousMemoryMap->permissions.read &&
                 previousMemoryMap->offset < memoryMap->offset &&
                 strcmp(previousMemoryMap->pathname, memoryMap->pathname) == 0) {
 
@@ -226,6 +228,8 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
                 if (isElfFile(fileMapped->data, fileMapped->dataSize)) {
                     if (parseElf(fileMapped->data, elf)) {
                         isSuccess = true;
+                        memoryMap->elfFileStart = previousMemoryMap->offset;
+                        memoryMap->elfLoadedStart = memoryMap->offset - previousMemoryMap->offset;
                     } else {
                         recycleFileMmap(fileMapped);
                     }
