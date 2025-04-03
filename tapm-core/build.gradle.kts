@@ -14,7 +14,7 @@ android {
 
         version = properties["VERSION_NAME"].toString()
 
-        setProperty("archivesBaseName", "tlog-${properties["VERSION_NAME"].toString()}")
+        setProperty("archivesBaseName", "tapm-${properties["VERSION_NAME"].toString()}")
         buildConfigField("String", "VERSION", "\"${properties["VERSION_NAME"].toString()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -35,6 +35,13 @@ android {
     ndkVersion = properties["NDK_VERSION"].toString()
 
     buildTypes {
+        debug {
+            packaging {
+                jniLibs {
+                    keepDebugSymbols += listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so")
+                }
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

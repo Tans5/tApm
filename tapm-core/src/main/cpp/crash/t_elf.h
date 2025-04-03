@@ -29,6 +29,7 @@ typedef struct T_ProgramHeader {
     uint32_t sizeInFile = 0;
     uint32_t sizeInMemory = 0;
     uint32_t align = 0;
+    uint32_t bias = 0;
 } T_ProgramHeader;
 
 typedef struct T_SectionHeader {
@@ -42,12 +43,33 @@ typedef struct T_SectionHeader {
     uint32_t info = 0;
     uint32_t align = 0;
     uint32_t entrySize = 0;
+    uint32_t index = 0;
 } T_SectionHeader;
 
 typedef struct T_Elf {
+    const uint8_t *buffer = nullptr;
     T_ElfHeader elfHeader;
     LinkedList programHeaders;
+    // 可执行的 PT_LOAD
+    T_ProgramHeader *loadXHeader = nullptr;
+    T_ProgramHeader *gnuEhFrameHeader = nullptr;
+    T_ProgramHeader *armExidxHeader = nullptr;
+    T_ProgramHeader *dynamicHeader = nullptr;
+
     LinkedList sectionHeaders;
+    // 符号表头
+    T_SectionHeader *symtabHeader = nullptr;
+    // 符号表的字符串头
+    T_SectionHeader *strtabHeader = nullptr;
+    // 动态符号表头
+    T_SectionHeader *dynsymHeader = nullptr;
+    // 动态符号表的字符串头
+    T_SectionHeader *dynstrHeader = nullptr;
+    T_SectionHeader *debugFrameHeader = nullptr;
+    T_SectionHeader *ehFrameHeader = nullptr;
+    T_SectionHeader *ehFrameHdrHeader = nullptr;
+    T_SectionHeader *genDebugDataHeader = nullptr;
+
 } T_Elf;
 
 void readString(char* dst, const char * src, int startIndex, int maxSize);

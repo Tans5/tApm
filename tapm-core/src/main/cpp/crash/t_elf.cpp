@@ -39,8 +39,19 @@ bool isElfFile(const uint8_t *buffer, size_t bufferSize) {
 #endif
 }
 
+const static char SYMTAB[]          = ".symtab";
+const static char STRTAB[]          = ".strtab";
+const static char DYNSYM[]          = ".dynsym";
+const static char DYNSTR[]          = ".dynstr";
+const static char DEBUG_FRAME[]     = ".debug_frame";
+const static char EH_FRAME[]        = ".eh_frame";
+const static char EH_FRAME_HDR[]    = ".eh_frame_hdr";
+const static char GNU_DEBUGDATA[]   = ".gnu_debugdata";
+
+
 bool parseElf(const uint8_t *buffer, T_Elf *output) {
     if (isElfFile(buffer, 5)) {
+        output->buffer = buffer;
         ElfW(Ehdr) elfHeader;
         size_t position = 0;
         // Read ElfHeader
@@ -69,6 +80,27 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             h->sizeInFile = programHeader.p_filesz;
             h->sizeInMemory = programHeader.p_memsz;
             h->align = programHeader.p_align;
+            h->bias = h->virtualAddress - h->offset;
+            switch (h->type) {
+                case PT_LOAD:
+                    if (0 == (h->flags & PF_X)) {
+                        continue;
+                    }
+                    output->loadXHeader = h;
+                    break;
+                case PT_GNU_EH_FRAME:
+                    output->gnuEhFrameHeader = h;
+                    break;
+                case PT_ARM_EXIDX:
+                    output->armExidxHeader = h;
+                    break;
+                case PT_DYNAMIC:
+                    output->dynamicHeader = h;
+                    break;
+                default: {
+                    break;
+                }
+            }
             output->programHeaders.addToLast(h);
         }
 
@@ -94,8 +126,63 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             h->info = sectionHeader.sh_info;
             h->align = sectionHeader.sh_addralign;
             h->entrySize = sectionHeader.sh_entsize;
+            h->index = i;
             output->sectionHeaders.addToLast(h);
+
+            if (strncmp(h->name, SYMTAB, sizeof(SYMTAB)) == 0) {
+                output->symtabHeader = h;
+            } else if (strncmp(h->name, STRTAB, sizeof(STRTAB)) == 0) {
+                output->strtabHeader = h;
+            } else if (strncmp(h->name, DYNSYM, sizeof(DYNSYM)) == 0) {
+                output->dynsymHeader = h;
+            } else if (strncmp(h->name, DYNSTR, sizeof(DYNSTR)) == 0) {
+                output->dynstrHeader = h;
+            } else if (strncmp(h->name, DEBUG_FRAME, sizeof(DEBUG_FRAME)) == 0) {
+                output->debugFrameHeader = h;
+            } else if (strncmp(h->name, EH_FRAME, sizeof(EH_FRAME)) == 0) {
+                output->ehFrameHeader = h;
+            } else if (strncmp(h->name, EH_FRAME_HDR, sizeof(EH_FRAME_HDR)) == 0) {
+                output->ehFrameHdrHeader = h;
+            } else if (strncmp(h->name, GNU_DEBUGDATA, sizeof(GNU_DEBUGDATA)) == 0) {
+                output->genDebugDataHeader = h;
+            }
+
         }
+
+        // Check symtab link.
+        if ((output->symtabHeader != nullptr &&
+             output->strtabHeader != nullptr &&
+             output->symtabHeader->link != output->strtabHeader->index) || (output->symtabHeader != nullptr && output->strtabHeader == nullptr)) {
+            Iterator iterator;
+            output->sectionHeaders.iterator(&iterator);
+            output->strtabHeader = nullptr;
+            while (iterator.containValue()) {
+                auto sh = static_cast<T_SectionHeader *>(iterator.value());
+                if (sh->index == output->symtabHeader->link && sh->index != 0) {
+                    output->strtabHeader = sh;
+                    break;
+                }
+                iterator.next();
+            }
+        }
+
+        // Check dynsym link.
+        if ((output->dynsymHeader != nullptr &&
+             output->dynstrHeader != nullptr &&
+             output->dynsymHeader->link != output->dynstrHeader->index) || (output->dynsymHeader != nullptr && output->dynstrHeader == nullptr)) {
+            Iterator iterator;
+            output->sectionHeaders.iterator(&iterator);
+            output->strtabHeader = nullptr;
+            while (iterator.containValue()) {
+                auto sh = static_cast<T_SectionHeader *>(iterator.value());
+                if (sh->index == output->dynsymHeader->link && sh->index != 0) {
+                    output->strtabHeader = sh;
+                    break;
+                }
+                iterator.next();
+            }
+        }
+
         return true;
     } else {
         return false;
@@ -103,10 +190,24 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
 }
 
 void recycleElf(T_Elf *toRecycle) {
+    toRecycle->buffer = nullptr;
+    toRecycle->loadXHeader = nullptr;
+    toRecycle->gnuEhFrameHeader = nullptr;
+    toRecycle->armExidxHeader = nullptr;
+    toRecycle->dynamicHeader = nullptr;
     while (toRecycle->programHeaders.size > 0) {
         auto v = toRecycle->programHeaders.popFirst();
         free(v);
     }
+
+    toRecycle->symtabHeader = nullptr;
+    toRecycle->strtabHeader = nullptr;
+    toRecycle->dynsymHeader = nullptr;
+    toRecycle->dynstrHeader = nullptr;
+    toRecycle->debugFrameHeader = nullptr;
+    toRecycle->ehFrameHeader = nullptr;
+    toRecycle->ehFrameHdrHeader = nullptr;
+    toRecycle->gnuEhFrameHeader = nullptr;
     while (toRecycle->sectionHeaders.size > 0) {
         auto v = toRecycle->sectionHeaders.popFirst();
         free(v);

@@ -138,7 +138,7 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             auto fileMapped = new Mapped;
             auto elf = new T_Elf;
             bool isSuccess = false;
-            if (!memoryMap->permissions.read || strlen(memoryMap->pathname) <= 0) {
+            if (!memoryMap->permissions.read || !memoryMap->permissions.exec || strlen(memoryMap->pathname) <= 0) {
                 goto LoadFromFileEnd;
             }
 
@@ -216,7 +216,7 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
             // -->    d256d000-d5ff0000 r-xp 01022000 fc:00 1158  /system/app/Chrome/Chrome.apk
             //        d5ff0000-d6009000 rw-p 04aa5000 fc:00 1158  /system/app/Chrome/Chrome.apk
             // 从 Offset 位置和 0 的位置都加载失败了，尝试从前一个 MemoryMap 中再去加载
-            if (previousMemoryMap != nullptr && previousMemoryMap->permissions.read &&
+            if (previousMemoryMap != nullptr && previousMemoryMap->permissions.read && previousMemoryMap->permissions.exec &&
                 previousMemoryMap->offset < memoryMap->offset &&
                 strcmp(previousMemoryMap->pathname, memoryMap->pathname) == 0) {
 

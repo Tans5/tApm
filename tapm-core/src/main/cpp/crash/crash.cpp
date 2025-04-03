@@ -147,13 +147,33 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                         LOGD("Section Headers: ");
                         crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
                             auto sh = static_cast<T_SectionHeader *>(s);
-                            LOGD("Name=%s, Offset=0x%x, SizeInFile=%d", sh->name, sh->offset, sh->sizeInFile);
+                            LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d", sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link, sh->info);
                             return true;
                         });
                     } else {
                         LOGE("Parse crash elf fail.");
                     }
                 }
+//                crashedProcessThreadsStatus.forEach(&memoryMaps, [](void * s, void* m) {
+//                    auto threadStatus = static_cast<ThreadStatus *>(s);
+//                    if (threadStatus->pc != 0) {
+//                        auto memoryMaps = static_cast<LinkedList *>(m);
+//                        MemoryMap *t = nullptr;
+//                        MemoryMap  *p = nullptr;
+//                        if (findMemoryMapByAddress(threadStatus->pc, memoryMaps, &t, &p)) {
+//                            if (tryLoadElf(t, p)) {
+//                                LOGD("Thread=%s, load elf file %s success.", threadStatus->thread->threadName, t->pathname);
+//                            } else {
+//                                LOGE("Thread=%s, load elf fail.", threadStatus->thread->threadName);
+//                            }
+//                        } else {
+//                            LOGE("Thread=%s, no memory map", threadStatus->thread->threadName);
+//                        }
+//                    } else {
+//                        LOGE("Thread=%s, no pc", threadStatus->thread->threadName);
+//                    }
+//                    return true;
+//                });
 
 
                 char abortMsg[256];
