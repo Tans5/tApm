@@ -72,7 +72,7 @@ int readRegsFromPtrace(pid_t tid, uintptr_t *outputRegs) {
     return 0;
 }
 
-void readRegsFromUContext(uintptr_t *outputRegs, ucontext_t *context) {
+void readRegsFromUContext(ucontext_t *context, uintptr_t *outputRegs) {
 #if defined(__aarch64__)
     outputRegs[T_REGS_X0]  = context->uc_mcontext.regs[0];
     outputRegs[T_REGS_X1]  = context->uc_mcontext.regs[1];

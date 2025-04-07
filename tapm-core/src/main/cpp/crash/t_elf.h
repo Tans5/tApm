@@ -68,7 +68,7 @@ typedef struct T_Elf {
     T_SectionHeader *debugFrameHeader = nullptr;
     T_SectionHeader *ehFrameHeader = nullptr;
     T_SectionHeader *ehFrameHdrHeader = nullptr;
-    T_SectionHeader *genDebugDataHeader = nullptr;
+    T_SectionHeader *gnuDebugDataHeader = nullptr;
 
 } T_Elf;
 

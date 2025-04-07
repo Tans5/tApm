@@ -61,5 +61,6 @@ target_link_libraries(
         # android
         android
         log
+        unwind
 
         xhook)

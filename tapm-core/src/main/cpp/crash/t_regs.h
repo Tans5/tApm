@@ -5,6 +5,127 @@
 #ifndef TAPM_T_REGS_H
 #define TAPM_T_REGS_H
 
+/***
+ * arm64
+ *
+ 寄存器	    别名	    用途
+  x0	    -	    参数1 / 返回值
+ x1-x7	    -	    参数2-参数8
+  x8	    -	    间接结果（如返回大结构体的地址）
+ x9-x15	    -	    临时寄存器（调用者保存）
+x19-x28	    -	    被调用者保存寄存器
+ x29	    FP	    帧指针（Frame Pointer）
+ x30	    LR	    链接寄存器（保存返回地址）
+  SP	    -	    栈指针（Stack Pointer）
+  PC	    -	    程序计数器（当前指令地址）
+
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    int result = add(3, 4);
+    return result;
+}
+
+// 函数 add()
+add:
+    sub sp, sp, #16         // 分配栈空间（16字节对齐）
+    str x29, [sp, #0]       // 保存旧的 FP
+    str x30, [sp, #8]       // 保存旧的 LR
+    add x29, sp, #0         // 设置新的 FP（当前栈顶）
+    add w0, w0, w1          // 计算 a + b（结果存入 w0）
+    ldr x29, [sp, #0]       // 恢复旧的 FP
+    ldr x30, [sp, #8]       // 恢复旧的 LR
+    add sp, sp, #16         // 释放栈空间
+    ret                     // 返回（跳转到 LR 地址）
+
+// 函数 main()
+main:
+    sub sp, sp, #16         // 分配栈空间
+    str x29, [sp, #0]       // 保存旧的 FP
+    str x30, [sp, #8]       // 保存旧的 LR
+    add x29, sp, #0         // 设置新的 FP
+    mov w0, #3              // 参数1：a = 3（存入 w0）
+    mov w1, #4              // 参数2：b = 4（存入 w1）
+    bl add                  // 调用 add()（LR 更新为下一条指令地址）
+    ldr x29, [sp, #0]       // 恢复旧的 FP
+    ldr x30, [sp, #8]       // 恢复旧的 LR
+    add sp, sp, #16         // 释放栈空间
+    ret                     // 返回
+
+
+一、假设条件
+ **main() 函数起始地址**：0x1000
+ **add() 函数起始地址**：0x2000
+ 初始栈指针（SP）：0x3000
+
+ 二、main() 函数执行流程
+ 1.分配栈空间
+ sub sp, sp, #16    ; SP = 0x3000 - 0x10 = 0x2FF0
+
+ 分配 16 字节; SP 从 0x3000 减到 0x2FF0
+
+ 2.保存旧 FP 和 LR
+ str x29, [sp, #0]   ; 旧 FP（例如 0x4000）存入地址 0x2FF0
+ str x30, [sp, #8]   ; 旧 LR（例如 0x5000）存入地址 0x2FF8
+
+ 旧 FP 和 LR 保存到栈的 0x2FF0 和 0x2FF8 处。
+
+ 3. 设置新 FP
+ add x29, sp, #0     ; 新 FP = SP（0x2FF0）
+
+ x29 指向当前栈帧基址 0x2FF0
+
+ 4. 参数传递
+ mov w0, #3          ; 参数1：w0 = 3
+ mov w1, #4          ; 参数2：w1 = 4
+
+ 5. 调用 add() 函数
+ bl add              ; LR = 0x1008（假设 `bl add` 的地址是 0x1004）
+
+ bl add 指令的地址假设为 0x1004，则下一条指令地址是 0x1008，存入 LR。
+ PC 跳转到 add() 的入口地址 0x2000。
+
+ 三、add() 函数执行流程
+
+ 1. 分配栈空间
+ sub sp, sp, #16     ; SP = 0x2FF0 - 0x10 = 0x2FE0
+
+ 2. 保存旧 FP 和 LR
+ str x29, [sp, #0]   ; 旧 FP（0x2FF0）存入地址 0x2FE0
+ str x30, [sp, #8]   ; 旧 LR（0x1008）存入地址 0x2FE8
+
+ 3. 设置新 FP
+ add x29, sp, #0     ; 新 FP = SP（0x2FE0）
+
+ 4. 执行计算
+ add w0, w0, w1      ; w0 = 3 + 4 = 7
+
+ 5. 恢复旧 FP 和 LR
+ ldr x29, [sp, #0]   ; 恢复旧 FP = 0x2FF0
+ ldr x30, [sp, #8]   ; 恢复旧 LR = 0x1008
+
+ 6. 释放栈空间
+ add sp, sp, #16     ; SP = 0x2FE0 + 0x10 = 0x2FF0
+
+ 7. 返回 main()
+ ret                 ; 跳转到 LR（0x1008）
+
+ 四、main() 函数恢复执行
+
+ 1. 恢复旧 FP 和 LR
+ ldr x29, [sp, #0]   ; 恢复旧 FP（例如 0x4000）
+ ldr x30, [sp, #8]   ; 恢复旧 LR（例如 0x5000）
+
+ 2. 释放栈空间
+ add sp, sp, #16     ; SP = 0x2FF0 + 0x10 = 0x3000
+
+ 3. 返回
+ ret                 ; 返回到调用者（例如系统或父函数）
+
+ */
 #if defined(__aarch64__)
 #define T_REGS_USER_NUM    34
 #define T_REGS_MACHINE_NUM 33
@@ -196,7 +317,7 @@ static const char *regsLabels[] = {
 
 int readRegsFromPtrace(pid_t tid, uintptr_t *outputRegs);
 
-void readRegsFromUContext(uintptr_t *regs, ucontext_t *context);
+void readRegsFromUContext(ucontext_t *context, uintptr_t *outputRegs);
 
 uintptr_t getPc(uintptr_t *regs);
 

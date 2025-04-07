@@ -144,7 +144,7 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             } else if (strncmp(h->name, EH_FRAME_HDR, sizeof(EH_FRAME_HDR)) == 0) {
                 output->ehFrameHdrHeader = h;
             } else if (strncmp(h->name, GNU_DEBUGDATA, sizeof(GNU_DEBUGDATA)) == 0) {
-                output->genDebugDataHeader = h;
+                output->gnuDebugDataHeader = h;
             }
 
         }
