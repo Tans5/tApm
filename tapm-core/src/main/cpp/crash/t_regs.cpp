@@ -19,11 +19,30 @@ int readRegsFromPtrace(pid_t tid, regs_t *outputRegs) {
 #else
     // arm64
     struct iovec iovec{};
-    iovec.iov_base = &outputRegs;
+    iovec.iov_base = outputRegs;
     iovec.iov_len = sizeof(regs_t);
-    auto ret = ptrace(PTRACE_GETREGSET, tid, (void *)NT_PRSTATUS, &iovec);
+    auto ret = ptrace(PTRACE_GETREGSET, tid, NT_PRSTATUS, &iovec);
     if (ret != 0) {
         return (int)ret;
+    }
+#endif
+    return 0;
+}
+
+int setRegsByPtrace(pid_t tid, regs_t *regs) {
+#if defined(__aarch64__)
+    struct iovec io = {
+            .iov_base = regs,
+            .iov_len = sizeof(*regs)
+    };
+    auto ret = ptrace(PTRACE_SETREGSET, tid, NT_PRSTATUS, &io);
+    if (ret != 0) {
+        return (int) ret;
+    }
+#else
+    auto ret = ptrace(PTRACE_SETREGS, tid, nullptr, regs);
+    if (ret != 0) {
+        return (int) ret;
     }
 #endif
     return 0;

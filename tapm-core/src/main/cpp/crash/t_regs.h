@@ -249,6 +249,8 @@ typedef struct user_regs_struct regs_t;
 
 int readRegsFromPtrace(pid_t tid, regs_t *outputRegs);
 
+int setRegsByPtrace(pid_t tid, regs_t *regs);
+
 void readRegsFromUContext(ucontext_t *context, regs_t *outputRegs);
 
 uint64_t getPc(regs_t *regs);
