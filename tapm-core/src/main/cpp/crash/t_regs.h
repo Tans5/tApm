@@ -127,80 +127,25 @@ main:
 
  */
 #if defined(__aarch64__)
-#define T_REGS_USER_NUM    34
-#define T_REGS_MACHINE_NUM 33
 
-#define T_REGS_X0  0
-#define T_REGS_X1  1
-#define T_REGS_X2  2
-#define T_REGS_X3  3
-#define T_REGS_X4  4
-#define T_REGS_X5  5
-#define T_REGS_X6  6
-#define T_REGS_X7  7
-#define T_REGS_X8  8
-#define T_REGS_X9  9
-#define T_REGS_X10 10
-#define T_REGS_X11 11
-#define T_REGS_X12 12
-#define T_REGS_X13 13
-#define T_REGS_X14 14
-#define T_REGS_X15 15
-#define T_REGS_X16 16
-#define T_REGS_X17 17
-#define T_REGS_X18 18
-#define T_REGS_X19 19
-#define T_REGS_X20 20
-#define T_REGS_X21 21
-#define T_REGS_X22 22
-#define T_REGS_X23 23
-#define T_REGS_X24 24
-#define T_REGS_X25 25
-#define T_REGS_X26 26
-#define T_REGS_X27 27
-#define T_REGS_X28 28
-#define T_REGS_X29 29
-#define T_REGS_LR  30
-#define T_REGS_SP  31
-#define T_REGS_PC  32
-
-static const char *regsLabels[] = {
-   "x0",
-   "x1",
-   "x2",
-   "x3",
-   "x4",
-   "x5",
-   "x6",
-   "x7",
-   "x8",
-   "x9",
-   "x10",
-   "x11",
-   "x12",
-   "x13",
-   "x14",
-   "x15",
-   "x16",
-   "x17",
-   "x18",
-   "x19",
-   "x20",
-   "x21",
-   "x22",
-   "x23",
-   "x24",
-   "x25",
-   "x26",
-   "x27",
-   "x28",
-   "x29",
-   "sp",
-   "lr",
-   "pc"
+/***
+struct user_regs_struct {
+  uint64_t regs[31];
+  uint64_t sp;
+  uint64_t pc;
+  uint64_t pstate;
 };
+ */
+
+typedef struct user_regs_struct regs_t;
 
 #elif defined(__arm__)
+/**
+struct user_regs {
+  unsigned long uregs[18];
+};
+ */
+typedef struct user_regs regs_t;
 #define T_REGS_USER_NUM    18
 #define T_REGS_MACHINE_NUM 16
 
@@ -220,6 +165,8 @@ static const char *regsLabels[] = {
 #define T_REGS_SP   13
 #define T_REGS_LR   14
 #define T_REGS_PC   15
+#define T_REGS_CPSR 16
+#define T_REGS_FAULT_ADDRESS 17
 
 static const char *regsLabels[] = {
      "r0",
@@ -241,86 +188,71 @@ static const char *regsLabels[] = {
 };
 
 #elif defined(__x86_64__)
-#define T_REGS_USER_NUM    27
-#define T_REGS_MACHINE_NUM 17
-
-#define T_REGS_RAX 0
-#define T_REGS_RDX 1
-#define T_REGS_RCX 2
-#define T_REGS_RBX 3
-#define T_REGS_RSI 4
-#define T_REGS_RDI 5
-#define T_REGS_RBP 6
-#define T_REGS_RSP 7
-#define T_REGS_R8  8
-#define T_REGS_R9  9
-#define T_REGS_R10 10
-#define T_REGS_R11 11
-#define T_REGS_R12 12
-#define T_REGS_R13 13
-#define T_REGS_R14 14
-#define T_REGS_R15 15
-#define T_REGS_RIP 16
-
-#define T_REGS_SP  T_REGS_RSP
-#define T_REGS_PC  T_REGS_RIP
-
-static const char *regsLabels[] = {
-        "rax",
-        "rdx",
-        "rcx",
-        "rbx",
-        "rsi",
-        "rdi",
-        "rbp",
-        "rsp",
-        "r8",
-        "r9",
-        "r10",
-        "r11",
-        "r12",
-        "r13",
-        "r14",
-        "r15",
-        "r16",
+/**
+struct user_regs_struct {
+  unsigned long r15;
+  unsigned long r14;
+  unsigned long r13;
+  unsigned long r12;
+  unsigned long rbp;
+  unsigned long rbx;
+  unsigned long r11;
+  unsigned long r10;
+  unsigned long r9;
+  unsigned long r8;
+  unsigned long rax;
+  unsigned long rcx;
+  unsigned long rdx;
+  unsigned long rsi;
+  unsigned long rdi;
+  unsigned long orig_rax;
+  unsigned long rip;
+  unsigned long cs;
+  unsigned long eflags;
+  unsigned long rsp;
+  unsigned long ss;
+  unsigned long fs_base;
+  unsigned long gs_base;
+  unsigned long ds;
+  unsigned long es;
+  unsigned long fs;
+  unsigned long gs;
 };
+ */
+typedef struct user_regs_struct regs_t;
 
 #elif defined(__i386__)
-#define T_REGS_USER_NUM    17
-#define T_REGS_MACHINE_NUM 16
-
-#define T_REGS_EAX 0
-#define T_REGS_ECX 1
-#define T_REGS_EDX 2
-#define T_REGS_EBX 3
-#define T_REGS_ESP 4
-#define T_REGS_EBP 5
-#define T_REGS_ESI 6
-#define T_REGS_EDI 7
-#define T_REGS_EIP 8
-#define T_REGS_SP  T_REGS_ESP
-#define T_REGS_PC  T_REGS_EIP
-
-static const char *regsLabels[] = {
-        "eax",
-        "ecx",
-        "edx",
-        "ebx",
-        "esp",
-        "ebp",
-        "esi",
-        "edi",
-        "eip"
+/**
+struct user_regs_struct {
+  long ebx;
+  long ecx;
+  long edx;
+  long esi;
+  long edi;
+  long ebp;
+  long eax;
+  long xds;
+  long xes;
+  long xfs;
+  long xgs;
+  long orig_eax;
+  long eip;
+  long xcs;
+  long eflags;
+  long esp;
+  long xss;
 };
+ */
+typedef struct user_regs_struct regs_t;
 
 #endif
 
-int readRegsFromPtrace(pid_t tid, uintptr_t *outputRegs);
+int readRegsFromPtrace(pid_t tid, regs_t *outputRegs);
 
-void readRegsFromUContext(ucontext_t *context, uintptr_t *outputRegs);
+void readRegsFromUContext(ucontext_t *context, regs_t *outputRegs);
 
-uintptr_t getPc(uintptr_t *regs);
+uint64_t getPc(regs_t *regs);
 
-uintptr_t getSp(uintptr_t *regs);
+uint64_t getSp(regs_t *regs);
 
 #endif //TAPM_T_REGS_H

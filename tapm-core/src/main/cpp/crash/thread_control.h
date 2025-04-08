@@ -13,9 +13,9 @@ typedef struct ThreadStatus {
     tApmThread * thread = nullptr;
     bool isSuspend = false;
     bool isGetRegs = false;
-    uintptr_t regs[T_REGS_USER_NUM]{};
-    uintptr_t pc = 0;
-    uintptr_t sp = 0;
+    regs_t regs{};
+    uint64_t pc = 0;
+    uint64_t sp = 0;
 } ThreadStatus;
 
 void initThreadStatus(LinkedList *inputThreads, pid_t crashThreadTid, LinkedList *outputThreadsStatus, ThreadStatus **outputCrashThreadStatus);

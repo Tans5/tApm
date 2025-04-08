@@ -76,15 +76,15 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashThreadTid, ucont
         auto status = static_cast<ThreadStatus *>(iterator.value());
         if (status->isSuspend) {
             if (status->thread->tid == crashThreadTid) {
-                readRegsFromUContext(crashThreadUContext, status->regs);
+                readRegsFromUContext(crashThreadUContext, &status->regs);
                 status->isGetRegs = true;
-                status->pc = getPc(status->regs);
-                status->sp = getSp(status->regs);
+                status->pc = getPc(&status->regs);
+                status->sp = getSp(&status->regs);
             } else {
-                if (readRegsFromPtrace(status->thread->tid, status->regs) == 0) {
+                if (readRegsFromPtrace(status->thread->tid, &status->regs) == 0) {
                     status->isGetRegs = true;
-                    status->pc = getPc(status->regs);
-                    status->sp = getSp(status->regs);
+                    status->pc = getPc(&status->regs);
+                    status->sp = getSp(&status->regs);
                 }
             }
         }
