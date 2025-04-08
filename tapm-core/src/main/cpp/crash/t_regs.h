@@ -5,6 +5,8 @@
 #ifndef TAPM_T_REGS_H
 #define TAPM_T_REGS_H
 
+#include <sys/ucontext.h>
+
 /***
  * arm64
  *
@@ -256,5 +258,7 @@ void readRegsFromUContext(ucontext_t *context, regs_t *outputRegs);
 uint64_t getPc(regs_t *regs);
 
 uint64_t getSp(regs_t *regs);
+
+uint64_t getFp(regs_t *regs);
 
 #endif //TAPM_T_REGS_H

@@ -25,6 +25,18 @@ target_link_libraries(xhook
         android
         log)
 
+add_library(libunwind-ptrace STATIC IMPORTED )
+set_target_properties(libunwind-ptrace PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-ptrace.a)
+#set_target_properties(libunwind-ptrace PROPERTIES INCLUDE_DIRECTORIES
+#        unwind)
+
+add_library(libunwind STATIC IMPORTED )
+set_target_properties(libunwind PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind.a)
+#set_target_properties(libunwind PROPERTIES INCLUDE_DIRECTORIES
+#        unwind)
+
 add_library(
         tapm SHARED
         jni.cpp
@@ -49,11 +61,14 @@ add_library(
         crash/file_mmap.cpp
         crash/t_elf.h
         crash/t_elf.cpp
+        crash/t_unwind.h
+        crash/t_unwind.cpp
         crash/crash.h
         crash/crash.cpp
 )
 target_include_directories(tapm PRIVATE
         xhook
+        unwind
 )
 
 target_link_libraries(
@@ -61,6 +76,7 @@ target_link_libraries(
         # android
         android
         log
-        unwind
 
+        libunwind
+        libunwind-ptrace
         xhook)

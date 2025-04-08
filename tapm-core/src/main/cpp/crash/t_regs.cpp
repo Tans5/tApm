@@ -155,3 +155,15 @@ uint64_t getSp(regs_t *regs) {
     return regs->esp;
 #endif
 }
+
+uint64_t getFp(regs_t *regs) {
+#if defined(__aarch64__)
+    return regs->regs[29];
+#elif defined(__arm__)
+    return regs->uregs[T_REGS_R11];
+#elif defined(__x86_64__)
+    return regs->rbp;
+#elif defined(__i386__)
+    return regs->ebp;
+#endif
+}
