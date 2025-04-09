@@ -129,38 +129,36 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 
                 findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap, &crashedMemoryMapPrevious);
                 if (crashedMemoryMap != nullptr) {
-                    if (tryLoadElf(crashedMemoryMap, crashedMemoryMapPrevious)) {
-                        auto crashedElf = crashedMemoryMap->elf;
-                        LOGD("Parse crash elf success.");
-                        auto elfHeader = crashedElf->elfHeader;
-                        LOGD("ELF Header: ");
-                        LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
-                             elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize, elfHeader.programHeaderNum);
-                        LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
-                             elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize, elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
-
-                        LOGD("Program Headers: ");
-                        crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
-                            auto ph = static_cast<T_ProgramHeader *>(p);
-                            LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset, ph->sizeInFile, ph->sizeInMemory);
-                            return true;
-                        });
-                        LOGD("Section Headers: ");
-                        crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
-                            auto sh = static_cast<T_SectionHeader *>(s);
-                            LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d", sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link, sh->info);
-                            return true;
-                        });
-                        auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
-                        char symbolName[256];
-                        uint64_t symbolOffset;
-                        readAddressSymbol(crashedElf, elfOffset, symbolName, &symbolOffset);
-                        uint64_t frames[256];
-                        unwindFrames(crashedTid, &crashedThreadStatus->regs, frames, 256);
-                        LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
-                    } else {
-                        LOGE("Parse crash elf fail.");
-                    }
+//                    if (tryLoadElf(crashedMemoryMap, crashedMemoryMapPrevious)) {
+//                        auto crashedElf = crashedMemoryMap->elf;
+//                        LOGD("Parse crash elf success.");
+//                        auto elfHeader = crashedElf->elfHeader;
+//                        LOGD("ELF Header: ");
+//                        LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
+//                             elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize, elfHeader.programHeaderNum);
+//                        LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
+//                             elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize, elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
+//
+//                        LOGD("Program Headers: ");
+//                        crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
+//                            auto ph = static_cast<T_ProgramHeader *>(p);
+//                            LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset, ph->sizeInFile, ph->sizeInMemory);
+//                            return true;
+//                        });
+//                        LOGD("Section Headers: ");
+//                        crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
+//                            auto sh = static_cast<T_SectionHeader *>(s);
+//                            LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d", sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link, sh->info);
+//                            return true;
+//                        });
+//                        auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
+//                        char symbolName[256];
+//                        uint64_t symbolOffset;
+//                        readAddressSymbol(crashedElf, elfOffset, symbolName, &symbolOffset);
+//                        LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
+//                    } else {
+//                        LOGE("Parse crash elf fail.");
+//                    }
                 }
 //                crashedProcessThreadsStatus.forEach(&memoryMaps, [](void * s, void* m) {
 //                    auto threadStatus = static_cast<ThreadStatus *>(s);
@@ -182,6 +180,26 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
 //                    }
 //                    return true;
 //                });
+
+                crashedProcessThreadsStatus.forEach(crashedThreadStatus, [](void *s, void *c) {
+                    auto threadStatus = static_cast<ThreadStatus *>(s);
+                    ThreadStatus *crashThread = nullptr;
+                    if (c != nullptr) {
+                        crashThread = static_cast<ThreadStatus *>(c);
+                    }
+                    if (threadStatus != nullptr && threadStatus->isGetRegs && threadStatus->isSuspend) {
+                        LinkedList frames;
+                        LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
+                        unwindFrames(threadStatus->thread->tid, &threadStatus->regs, crashThread == threadStatus, &frames, 256);
+                        frames.forEach(nullptr, [](void *f, void*) {
+                           auto frame = static_cast<Frame *>(f);
+                            LOGD("PC=0x%llx, Symbol=%s, Offset=0x%llx", frame->pc, frame->symbol, frame->offsetInSymbol);
+                           return true;
+                        });
+                        recycleFrames(&frames);
+                    }
+                    return true;
+                });
 
 
                 char abortMsg[256];
