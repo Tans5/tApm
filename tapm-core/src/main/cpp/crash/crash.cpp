@@ -21,6 +21,7 @@
 #include "file_mmap.h"
 #include "t_elf.h"
 #include "memory_maps.h"
+#include "t_unwind.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -154,6 +155,8 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
                         char symbolName[256];
                         uint64_t symbolOffset;
                         readAddressSymbol(crashedElf, elfOffset, symbolName, &symbolOffset);
+                        uint64_t frames[256];
+                        unwindFrames(crashedTid, &crashedThreadStatus->regs, frames, 256);
                         LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
                     } else {
                         LOGE("Parse crash elf fail.");

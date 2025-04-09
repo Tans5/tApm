@@ -112,7 +112,7 @@ publishing {
             }
             artifact(sourceCode)
             pom {
-                name = "tLog"
+                name = "tApm"
                 description = "Android application performance monitoring libs."
                 url = "https://github.com/tans5/tApm.git"
                 licenses {

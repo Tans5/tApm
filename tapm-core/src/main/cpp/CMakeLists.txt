@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project("tapm")
 
+# region xhook
 add_library(xhook SHARED
         xhook/queue.h
         xhook/tree.h
@@ -24,19 +25,55 @@ add_library(xhook SHARED
 target_link_libraries(xhook
         android
         log)
+# endregion
 
-add_library(libunwind-ptrace STATIC IMPORTED )
-set_target_properties(libunwind-ptrace PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-ptrace.a)
-#set_target_properties(libunwind-ptrace PROPERTIES INCLUDE_DIRECTORIES
-#        unwind)
+# region unwind
 
+# unwind
 add_library(libunwind STATIC IMPORTED )
 set_target_properties(libunwind PROPERTIES IMPORTED_LOCATION
         ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind.a)
-#set_target_properties(libunwind PROPERTIES INCLUDE_DIRECTORIES
-#        unwind)
 
+# unwind-a
+add_library(libunwind-a STATIC IMPORTED )
+set_target_properties(libunwind-a PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-${ANDROID_ABI}.a)
+
+# ptrace
+add_library(libunwind-ptrace STATIC IMPORTED )
+set_target_properties(libunwind-ptrace PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-ptrace.a)
+
+# dwarf-common
+add_library(libunwind-dwarf-common STATIC IMPORTED)
+set_target_properties(libunwind-dwarf-common PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-dwarf-common.a)
+
+# dwarf-generic
+add_library(libunwind-dwarf-generic STATIC IMPORTED)
+set_target_properties(libunwind-dwarf-generic PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-dwarf-generic.a)
+
+# dwarf-local
+add_library(libunwind-dwarf-local STATIC IMPORTED)
+set_target_properties(libunwind-dwarf-local PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-dwarf-local.a)
+
+# elf
+add_library(libunwind-elf STATIC IMPORTED)
+set_target_properties(libunwind-elf PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-elf-${ANDROID_ABI}.a)
+
+# setjmp
+add_library(libunwind-setjmp STATIC IMPORTED)
+set_target_properties(libunwind-setjmp PROPERTIES IMPORTED_LOCATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libunwind-setjmp.a)
+
+
+# endregion
+
+
+# region tapm
 add_library(
         tapm SHARED
         jni.cpp
@@ -76,7 +113,16 @@ target_link_libraries(
         # android
         android
         log
+        z
 
         libunwind
         libunwind-ptrace
+        libunwind-a
+        libunwind-dwarf-common
+        libunwind-dwarf-generic
+        libunwind-dwarf-local
+        libunwind-elf
+        libunwind-setjmp
+
         xhook)
+# endregion
