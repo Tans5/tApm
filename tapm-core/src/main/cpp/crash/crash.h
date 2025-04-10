@@ -35,6 +35,16 @@ static int CRASH_SIGNAL[8] = {
 
 #define SIGNAL_STACK_SIZE (128 * 1024)
 
+typedef struct CrashSignal {
+    int sig = 0;
+    siginfo_t sigInfo {};
+    ucontext_t userContext{};
+    int64_t crashTime = 0;
+    pid_t crashPid = 0;
+    pid_t crashTid = 0;
+    char crashFilePath[256];
+} CrashSignal;
+
 typedef struct OldCrashSignalAction {
     int  signal = 0;
     struct sigaction action {};

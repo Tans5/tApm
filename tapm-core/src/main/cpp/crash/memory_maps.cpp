@@ -120,7 +120,9 @@ bool findMemoryMapByAddress(uintptr_t address, LinkedList *maps, MemoryMap **tar
         auto map = static_cast<MemoryMap *>(iterator.value());
         if (map->startAddr <= address && map->endAddr > address) {
             *target = map;
-            *previous = p;
+            if (previous != nullptr) {
+                *previous = p;
+            }
             return true;
         }
         p = map;

@@ -5,6 +5,7 @@
 #include <sys/ucontext.h>
 #include <sys/wait.h>
 #include <cerrno>
+#include <unistd.h>
 #include "thread_control.h"
 #include "../tapm_log.h"
 
@@ -27,9 +28,10 @@ void initThreadStatus(LinkedList *inputThreads, pid_t crashThreadTid, LinkedList
 void suspendThreads(LinkedList *inputThreadsStatus) {
     Iterator iterator;
     inputThreadsStatus->iterator(&iterator);
+    auto currentTid = gettid();
     while (iterator.containValue()) {
         auto threadAndStatus = static_cast<ThreadStatus *>(iterator.value());
-        if (!threadAndStatus->isSuspend) {
+        if (!threadAndStatus->isSuspend && threadAndStatus->thread->tid != currentTid) {
             auto thread = threadAndStatus->thread;
             int r = ptrace(PTRACE_ATTACH, thread->tid, nullptr, nullptr);
             if (r != 0) {
@@ -50,6 +52,8 @@ void suspendThreads(LinkedList *inputThreadsStatus) {
                     threadAndStatus->isSuspend = true;
                 }
             }
+        } else {
+            LOGD("Skip suspend thread: %s", threadAndStatus->thread->threadName);
         }
         iterator.next();
     }
@@ -80,9 +84,6 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashThreadTid, ucont
                 status->isGetRegs = true;
                 status->pc = getPc(&status->regs);
                 status->sp = getSp(&status->regs);
-//                if (setRegsByPtrace(crashThreadTid, &status->regs) == 0) {
-//                    LOGD("Set regs success.");
-//                }
             } else {
                 if (readRegsFromPtrace(status->thread->tid, &status->regs) == 0) {
                     status->isGetRegs = true;
@@ -90,6 +91,8 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashThreadTid, ucont
                     status->sp = getSp(&status->regs);
                 }
             }
+        } else {
+            LOGD("Skip read thread %s's regs", status->thread->threadName);
         }
         iterator.next();
     }
