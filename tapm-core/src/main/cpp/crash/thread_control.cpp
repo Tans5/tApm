@@ -78,18 +78,21 @@ void readThreadsRegs(LinkedList *inputThreadsStatus, pid_t crashThreadTid, ucont
 
     while (iterator.containValue()) {
         auto status = static_cast<ThreadStatus *>(iterator.value());
-        if (status->isSuspend) {
-            if (status->thread->tid == crashThreadTid) {
-                readRegsFromUContext(crashThreadUContext, &status->regs);
+        if (status->thread->tid == crashThreadTid) {
+            readRegsFromUContext(crashThreadUContext, &status->regs);
+            status->isGetRegs = true;
+            status->pc = getPc(&status->regs);
+            status->sp = getSp(&status->regs);
+            status->fp = getFp(&status->regs);
+            status->crashSignalCtx = crashThreadUContext;
+        } else if (status->isSuspend) {
+            if (readRegsFromPtrace(status->thread->tid, &status->regs) == 0) {
                 status->isGetRegs = true;
                 status->pc = getPc(&status->regs);
                 status->sp = getSp(&status->regs);
+                status->fp = getFp(&status->regs);
             } else {
-                if (readRegsFromPtrace(status->thread->tid, &status->regs) == 0) {
-                    status->isGetRegs = true;
-                    status->pc = getPc(&status->regs);
-                    status->sp = getSp(&status->regs);
-                }
+                LOGD("Read regs from ptrace fail %s", status->thread->threadName);
             }
         } else {
             LOGD("Skip read thread %s's regs", status->thread->threadName);

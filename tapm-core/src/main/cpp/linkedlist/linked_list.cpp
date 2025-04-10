@@ -4,7 +4,7 @@
 #include "linked_list.h"
 
 bool Iterator::containValue() const {
-    if (node != rootNodePtr) {
+    if (node != nullptr && node->value != nullptr) {
         return true;
     } else {
         return false;
@@ -105,7 +105,7 @@ void* LinkedList::popLast() {
 
 void LinkedList::forEach(void *context, bool (*action)(void * value, void* context)) const {
     auto node = head;
-    while (node != rootNodePtr) {
+    while (node != nullptr && node->value != nullptr) {
         auto needContinue = action(node->value, context);
         if (!needContinue) {
             break;

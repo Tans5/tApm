@@ -58,21 +58,6 @@ static int handleCrash(CrashSignal *crashSignal) {
     }
     suspendThreads(&crashedProcessThreadsStatus);
 
-    // Read all threads register value.
-    readThreadsRegs(&crashedProcessThreadsStatus, crashSignal->crashTid, &crashSignal->userContext);
-//    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *ts, void *memoryMaps) -> bool {
-//        auto *threadStatus = static_cast<ThreadStatus *>(ts);
-//        MemoryMap * map = nullptr;
-//        findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map,nullptr);
-//        char *mapPath = "";
-//        if (map != nullptr) {
-//            mapPath = map->pathname;
-//        }
-//        LOGD("Thread=%s, Tid=%d, PC=0x%llx, SP=0x%llx, MapPath=%s", threadStatus->thread->threadName,
-//             threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, mapPath);
-//        return true;
-//    });
-
     // Parse memory maps.
     parseMemoryMaps(crashSignal->crashPid, &memoryMaps);
 //    memoryMaps.forEach(nullptr, [](void *m, void *c) -> bool {
@@ -87,6 +72,26 @@ static int handleCrash(CrashSignal *crashSignal) {
 //             map->permissions.exec);
 //        return true;
 //    });
+
+    // Read all threads register value.
+    readThreadsRegs(&crashedProcessThreadsStatus, crashSignal->crashTid, &crashSignal->userContext);
+    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *ts, void *memoryMaps) -> bool {
+        auto *threadStatus = static_cast<ThreadStatus *>(ts);
+        if (threadStatus->isGetRegs) {
+            MemoryMap * map = nullptr;
+            findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map,
+                                   nullptr);
+            char *mapPath = "";
+            if (map != nullptr) {
+                mapPath = map->pathname;
+            }
+            LOGD("Thread=%s, Tid=%d, PC=0x%lx, SP=0x%lx, FP=0x%lx MapPath=%s", threadStatus->thread->threadName,
+                 threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, threadStatus->fp, mapPath);
+        } else {
+            LOGD("Thread %s don't get regs", threadStatus->thread->threadName);
+        }
+        return true;
+    });
 
 
     findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap, &crashedMemoryMapPrevious);
@@ -149,23 +154,18 @@ static int handleCrash(CrashSignal *crashSignal) {
 //        return true;
 //    });
 
-    crashedProcessThreadsStatus.forEach(crashedThreadStatus, [](void *s, void *c) {
+    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
         auto threadStatus = static_cast<ThreadStatus *>(s);
-        ThreadStatus *crashThread = nullptr;
-        if (c != nullptr) {
-            crashThread = static_cast<ThreadStatus *>(c);
-        }
-        if (threadStatus != nullptr && threadStatus->isGetRegs && threadStatus->isSuspend) {
-            LinkedList frames;
-            LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
-            unwindFrames(threadStatus->thread->tid, &threadStatus->regs, crashThread == threadStatus, &frames, 256);
-            frames.forEach(nullptr, [](void *f, void*) {
-                auto frame = static_cast<Frame *>(f);
-                LOGD("PC=0x%llx, Symbol=%s, Offset=0x%llx", frame->pc, frame->symbol, frame->offsetInSymbol);
-                return true;
-            });
-            recycleFrames(&frames);
-        }
+        LinkedList *memoryMaps = static_cast<LinkedList *>(m);
+        LinkedList frames;
+        LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
+        unwindFramesLocal(threadStatus, memoryMaps, &frames, 64);
+        frames.forEach(nullptr, [](void *f, void*) {
+            auto frame = static_cast<Frame *>(f);
+            LOGD("PC=0x%llx, SP=0x%llx, ElfPath=%s, PC_ELF=0x%llx, Symbol=%s, OffsetInSymbol=0x%llx", frame->pc, frame->sp, frame->elfPath, frame->offsetInElf, frame->symbol, frame->offsetInSymbol);
+            return true;
+        });
+        recycleFrames(&frames);
         return true;
     });
 

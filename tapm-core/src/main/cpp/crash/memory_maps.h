@@ -46,7 +46,7 @@ void parseMemoryMaps(pid_t pid, LinkedList *output);
 
 bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output);
 
-bool findMemoryMapByAddress(uintptr_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous);
+bool findMemoryMapByAddress(uint64_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous);
 
 bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap);
 

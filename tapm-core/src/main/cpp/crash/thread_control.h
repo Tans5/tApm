@@ -16,6 +16,8 @@ typedef struct ThreadStatus {
     regs_t regs{};
     uint64_t pc = 0;
     uint64_t sp = 0;
+    uint64_t fp = 0;
+    ucontext_t *crashSignalCtx = nullptr;
 } ThreadStatus;
 
 void initThreadStatus(LinkedList *inputThreads, pid_t crashThreadTid, LinkedList *outputThreadsStatus, ThreadStatus **outputCrashThreadStatus);
