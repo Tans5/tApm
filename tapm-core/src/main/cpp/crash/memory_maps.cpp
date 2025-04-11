@@ -267,7 +267,7 @@ bool loadElfSymbol(addr_t address, LinkedList *maps, char *outputElfPath, addr_t
     MemoryMap *memoryMap = nullptr;
     findMemoryMapByAddress(address, maps, &memoryMap);
     if (memoryMap == nullptr) {
-        LOGE("Don't fil memory map for address 0x%llx", (uint64_t) address);
+        LOGE("Don't find memory map for address 0x%llx", (uint64_t) address);
         return false;
     }
     memcpy(outputElfPath, memoryMap->pathname, sizeof(memoryMap->pathname));

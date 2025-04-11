@@ -194,8 +194,68 @@ static int handleCrash(CrashSignal *crashSignal) {
     return ret;
 }
 
-static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
+void* handleCrashThread(void * args) {
+    int ret = handleCrash(static_cast<CrashSignal *>(args));
+    auto b = malloc(sizeof(int));
+    memcpy(b, &ret, sizeof(int));
+    return b;
+}
+
+static int handleCrashOnNewThread(CrashSignal *crashSignal) {
     LOGD("Receive crash sig: %d", crashSignal->sig);
+    pthread_attr_t attr;
+    pthread_t t;
+#if defined(__i386__) || defined(__arm__)
+    int stackSize = 256 * 1024 * 1024; // 256k
+#else
+    int stackSize = 512 * 1024 * 1024; // 512k
+#endif
+    int ret = prctl(PR_SET_DUMPABLE, 1);
+    void * threadRet = nullptr;
+    if (ret != 0) {
+        LOGE("Set progress dumpable fail: %d", ret);
+        goto End;
+    }
+    errno = 0;
+    ret = prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+    if (ret != 0 && errno != EINVAL) {
+        LOGE("Set process tracer fail: %d", ret);
+        ret = -1;
+        goto End;
+    } else {
+        ret = 0;
+    }
+
+    ret = pthread_attr_init(&attr);
+    if (ret != 0) {
+        LOGE("Init thread attr fail: %d", ret);
+        ret = -1;
+        goto End;
+    }
+
+    ret = pthread_attr_setstacksize(&attr, stackSize);
+    if (ret != 0) {
+        LOGE("Set thread stack size fail: %d", ret);
+        ret = -1;
+        goto End;
+    }
+
+    pthread_create(&t, &attr, handleCrashThread, crashSignal);
+    pthread_join(t, &threadRet);
+    if (threadRet != nullptr) {
+        ret = *static_cast<int *>(threadRet);
+        free(threadRet);
+        threadRet = nullptr;
+    } else {
+        ret = -1;
+    }
+    LOGD("Thread result: %d", ret);
+    End:
+    pthread_attr_destroy(&attr);
+    return ret;
+}
+
+static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
     int ret = prctl(PR_SET_DUMPABLE, 1);
     int childProcessPid = 0;
     if (ret != 0) {
@@ -216,7 +276,7 @@ static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
         // ChildProcess
         LOGD("Child process started.");
         alarm(30);
-        int r = handleCrash(crashSignal);
+        int r = handleCrashOnNewThread(crashSignal);
         _Exit(r);
     } else if (childProcessPid > 0) {
         LOGD("Waiting child process finish work.");
@@ -236,52 +296,6 @@ static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
         ret = -1;
     }
 
-    End:
-    if (ret == 0) {
-        // TODO: success.
-    } else {
-        // TODO: fail.
-    }
-    return ret;
-}
-
-void* handleCrashThread(void * args) {
-    int ret = handleCrash(static_cast<CrashSignal *>(args));
-    auto b = malloc(sizeof(int));
-    memcpy(b, &ret, sizeof(int));
-    return b;
-}
-
-static int handleCrashOnNewThread(CrashSignal *crashSignal) {
-    LOGD("Receive crash sig: %d", crashSignal->sig);
-    int ret = prctl(PR_SET_DUMPABLE, 1);
-    void * threadRet = nullptr;
-    if (ret != 0) {
-        LOGE("Set progress dumpable fail: %d", ret);
-        goto End;
-    }
-    errno = 0;
-    ret = prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
-    if (ret != 0 && errno != EINVAL) {
-        LOGE("Set process tracer fail: %d", ret);
-        ret = -1;
-        goto End;
-    } else {
-        ret = 0;
-    }
-
-    pthread_t t;
-
-    pthread_create(&t, nullptr, handleCrashThread, crashSignal);
-    pthread_join(t, &threadRet);
-    if (threadRet != nullptr) {
-        ret = *static_cast<int *>(threadRet);
-        free(threadRet);
-        threadRet = nullptr;
-    } else {
-        ret = -1;
-    }
-    LOGD("Thread result: %d", ret);
     End:
     if (ret == 0) {
         // TODO: success.

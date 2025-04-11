@@ -29,6 +29,11 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
         viewBinding.testNativeCrashBt.clicks(this) {
             (application as App).apm.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
         }
+        viewBinding.testNativeCrashNewThreadBt.clicks(this) {
+            Thread {
+                (application as App).apm.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
+            }.start()
+        }
     }
 
 }

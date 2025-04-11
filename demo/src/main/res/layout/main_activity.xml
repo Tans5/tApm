@@ -24,8 +24,16 @@
         android:id="@+id/test_native_crash_bt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Test native crash."
+        android:text="Test native crash"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/block_main_thread_bt"/>
+
+    <Button
+        android:id="@+id/test_native_crash_new_thread_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Test native crash new thread"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/test_native_crash_bt"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

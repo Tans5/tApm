@@ -5,7 +5,7 @@
 #ifndef TAPM_TAPM_ADDR_H
 #define TAPM_TAPM_ADDR_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #if defined(__aarch64__)
 #define CPU_ARCH "arm64"

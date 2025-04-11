@@ -10,7 +10,7 @@
 #include <cstring>
 #include "tapm_thread.h"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 256
 
 void forEachThreads(pid_t pid, void * context, bool (*action)(const pid_t tid, const char * threadName, int threadNameSize, void *context)) {
     char processPath[BUFFER_SIZE];
