@@ -101,6 +101,9 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
             if (msgSize <= 0) {
                 return false;
             }
+            if (msgSize > 256) {
+                msgSize = 256;
+            }
             readAddress += sizeof(msgSize);
             if (processRead(pid, readAddress, output, msgSize) > 0) {
                 return true;
