@@ -40,18 +40,25 @@ typedef struct MemoryMap {
     addr_t elfFileStart = 0;
     // elf 文件被加载到内存中的偏移部分，例如当前的位置只加载了 DYNAMIC 段，这个段在文件中的偏移量为 4096.
     addr_t elfLoadedStart = 0;
-    Mapped *elfFileMap = nullptr;
+    Mapped * elfFileMap = nullptr;
+    MemoryMap *previous = nullptr;
 } MemoryMap;
 
 void parseMemoryMaps(pid_t pid, LinkedList *output);
 
 bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output);
 
-bool findMemoryMapByAddress(addr_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous);
+bool findMemoryMapByAddress(addr_t address, LinkedList *maps, MemoryMap **target);
 
-bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap);
+bool tryLoadElfFileMmap(MemoryMap *memoryMap);
+
+bool tryLoadElf(MemoryMap *memoryMap);
 
 addr_t convertAddressToElfOffset(MemoryMap *memoryMap, addr_t address);
+
+bool loadElfSymbol(addr_t address, LinkedList *maps, addr_t *outputElfOffset, char *outputSymbol, addr_t *outputSymbolOffset);
+
+void recycleElfFileMap(MemoryMap *memoryMap);
 
 void recycleMemoryMaps(LinkedList *toRecycle);
 

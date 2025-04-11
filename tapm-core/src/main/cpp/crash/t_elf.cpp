@@ -10,14 +10,15 @@
 #include "memory_maps.h"
 #include "../tapm_log.h"
 
-void readString(char* dst, const char * src, uint32_t startIndex, int maxSize) {
+int readString(char* dst, const char * src, uint32_t startIndex, int maxSize) {
     for (int i = 0; i < maxSize; i ++) {
         char c = src[startIndex + i];
         dst[i] = c;
         if (c == '\0') {
-            break;
+            return i;
         }
     }
+    return maxSize;
 }
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize) {
@@ -51,7 +52,6 @@ const static char GNU_DEBUGDATA[]   = ".gnu_debugdata";
 
 bool parseElf(const uint8_t *buffer, T_Elf *output) {
     if (isElfFile(buffer, 5)) {
-        output->buffer = buffer;
         ElfW(Ehdr) elfHeader;
         size_t position = 0;
         // Read ElfHeader
@@ -212,22 +212,21 @@ static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSe
     return result;
 }
 
-bool readAddressSymbol(T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset) {
+bool readAddressSymbol(const uint8_t *buffer, T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset) {
     bool result = false;
     if (elf->dynsymHeader != nullptr && elf->dynstrHeader != nullptr) {
         // Find symbol from .dynsym
-        result = readAddressSymbol(elf->buffer, elf->dynsymHeader, elf->dynstrHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
+        result = readAddressSymbol(buffer, elf->dynsymHeader, elf->dynstrHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
     }
     if (!result && elf->symtabHeader != nullptr && elf->strtabHeader != nullptr) {
         // Find symbol from .symtab
-        result = readAddressSymbol(elf->buffer, elf->symtabHeader, elf->strtabHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
+        result = readAddressSymbol(buffer, elf->symtabHeader, elf->strtabHeader, elfOffset,  outputSymbolName, outputSymbolOffset);
     }
 
     return result;
 }
 
 void recycleElf(T_Elf *toRecycle) {
-    toRecycle->buffer = nullptr;
     toRecycle->loadXHeader = nullptr;
     toRecycle->gnuEhFrameHeader = nullptr;
     toRecycle->armExidxHeader = nullptr;

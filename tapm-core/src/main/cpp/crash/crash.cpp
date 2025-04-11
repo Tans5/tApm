@@ -44,7 +44,6 @@ static int handleCrash(CrashSignal *crashSignal) {
     ThreadStatus *crashedThreadStatus = nullptr;
     LinkedList memoryMaps;
     MemoryMap *crashedMemoryMap = nullptr;
-    MemoryMap *crashedMemoryMapPrevious = nullptr;
 
     // Get all threads
     getProcessThreads(crashSignal->crashPid, &crashedProcessThreads);
@@ -79,8 +78,7 @@ static int handleCrash(CrashSignal *crashSignal) {
         auto *threadStatus = static_cast<ThreadStatus *>(ts);
         if (threadStatus->isGetRegs) {
             MemoryMap * map = nullptr;
-            findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map,
-                                   nullptr);
+            findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map);
             char *mapPath = "";
             if (map != nullptr) {
                 mapPath = map->pathname;
@@ -94,9 +92,9 @@ static int handleCrash(CrashSignal *crashSignal) {
     });
 
 
-    findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap, &crashedMemoryMapPrevious);
+    findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap);
 //    if (crashedMemoryMap != nullptr) {
-//        if (tryLoadElf(crashedMemoryMap, crashedMemoryMapPrevious)) {
+//        if (tryLoadElf(crashedMemoryMap)) {
 //            auto crashedElf = crashedMemoryMap->elf;
 //            LOGD("Parse crash elf success.");
 //            auto elfHeader = crashedElf->elfHeader;
@@ -125,8 +123,8 @@ static int handleCrash(CrashSignal *crashSignal) {
 //            });
 //            auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
 //            char symbolName[256];
-//            uint64_t symbolOffset;
-//            readAddressSymbol(crashedElf, elfOffset, symbolName, &symbolOffset);
+//            addr_t symbolOffset;
+//            readAddressSymbol(crashedMemoryMap->elfFileMap->data, crashedElf, elfOffset, symbolName, &symbolOffset);
 //            LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
 //        } else {
 //            LOGE("Parse crash elf fail.");
@@ -137,9 +135,8 @@ static int handleCrash(CrashSignal *crashSignal) {
 //        if (threadStatus->isGetRegs) {
 //            auto memoryMaps = static_cast<LinkedList *>(m);
 //            MemoryMap *t = nullptr;
-//            MemoryMap *p = nullptr;
-//            if (findMemoryMapByAddress(threadStatus->pc, memoryMaps, &t, &p)) {
-//                if (tryLoadElf(t, p)) {
+//            if (findMemoryMapByAddress(threadStatus->pc, memoryMaps, &t)) {
+//                if (tryLoadElf(t)) {
 //                    LOGD("Thread=%s, load elf file %s success.", threadStatus->thread->threadName,
 //                         t->pathname);
 //                } else {

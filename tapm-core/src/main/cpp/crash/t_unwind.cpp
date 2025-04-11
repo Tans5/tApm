@@ -1,7 +1,7 @@
 //
 // Created by pengcheng.tan on 2025/4/8.
 //
-#include <string.h>
+#include <cstring>
 #include "t_unwind.h"
 #include "libunwind-ptrace.h"
 #include "../tapm_log.h"
@@ -102,14 +102,6 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
         auto f = new Frame;
         f->pc = ip;
         f->sp = sp;
-
-        if (findMemoryMapByAddress(ip, memoryMaps, &map, &mapPre)) {
-            if (tryLoadElf(map, mapPre)) {
-                f->offsetInElf = convertAddressToElfOffset(map, ip);
-                readAddressSymbol(map->elf, f->offsetInElf, f->symbol, &f->offsetInSymbol);
-            }
-            memcpy(f->elfPath, map->pathname, sizeof(map->pathname));
-        }
         outputFrames->addToLast(f);
     } while(outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
 
@@ -139,8 +131,6 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
         copyRegs(&uc, &regs);
     }
 
-    MemoryMap *map = nullptr;
-    MemoryMap *mapPre = nullptr;
     unw_init_local(&cursor, &uc);
     do {
         unw_get_reg(&cursor, UNW_REG_IP, &ip);
@@ -152,13 +142,6 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
         f->pc = ip;
         f->sp = sp;
 
-        if (findMemoryMapByAddress(ip, memoryMaps, &map, &mapPre)) {
-            if (tryLoadElf(map, mapPre)) {
-                f->offsetInElf = convertAddressToElfOffset(map, ip);
-                readAddressSymbol(map->elf, f->offsetInElf, f->symbol, &f->offsetInSymbol);
-            }
-            memcpy(f->elfPath, map->pathname, sizeof(map->pathname));
-        }
         outputFrames->addToLast(f);
     } while (outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
 

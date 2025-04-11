@@ -48,7 +48,6 @@ typedef struct T_SectionHeader {
 } T_SectionHeader;
 
 typedef struct T_Elf {
-    const uint8_t *buffer = nullptr;
     T_ElfHeader elfHeader;
     LinkedList programHeaders;
     // 可执行的 PT_LOAD
@@ -73,13 +72,13 @@ typedef struct T_Elf {
 
 } T_Elf;
 
-void readString(char* dst, const char * src, uint32_t startIndex, int maxSize);
+int readString(char* dst, const char * src, uint32_t startIndex, int maxSize);
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 
 bool parseElf(const uint8_t *buffer, T_Elf *output);
 
-bool readAddressSymbol(T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset);
+bool readAddressSymbol(const uint8_t *buffer, T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset);
 
 void recycleElf(T_Elf *toRecycle);
 
