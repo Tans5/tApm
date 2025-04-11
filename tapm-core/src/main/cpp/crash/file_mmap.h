@@ -6,7 +6,7 @@
 #define TAPM_FILE_MMAP_H
 
 #include <cstdint>
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 typedef struct Mapped {
     int fileFd = -1;

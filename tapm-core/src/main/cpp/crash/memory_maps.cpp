@@ -15,7 +15,7 @@
 
 void parseMemoryMaps(pid_t pid, LinkedList *output) {
     using namespace std;
-    char filePath[256];
+    char filePath[MAX_STR_SIZE];
     sprintf(filePath, "/proc/%d/maps", pid);
     std::ifstream file(filePath);
     if (!file.is_open()) {
@@ -52,8 +52,8 @@ void parseMemoryMaps(pid_t pid, LinkedList *output) {
         getline(stream, path);
         auto chars = path.c_str();
         auto size = path.size();
-        if (size > 256) {
-            size = 256;
+        if (size > MAX_STR_SIZE) {
+            size = MAX_STR_SIZE;
         }
         memcpy(memoryMap->pathname, chars, size);
         if (strncmp(memoryMap->pathname, "/dev/", 5) == 0 && 0 != strncmp(memoryMap->pathname + 5, "ashmem/", 7)) {
@@ -101,8 +101,8 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
             if (msgSize <= 0) {
                 return false;
             }
-            if (msgSize > 256) {
-                msgSize = 256;
+            if (msgSize > MAX_STR_SIZE) {
+                msgSize = MAX_STR_SIZE;
             }
             readAddress += sizeof(msgSize);
             if (processRead(pid, readAddress, output, msgSize) > 0) {

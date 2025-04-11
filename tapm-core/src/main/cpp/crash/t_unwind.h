@@ -10,15 +10,15 @@
 #include "../linkedlist/linked_list.h"
 #include "thread_control.h"
 #include "memory_maps.h"
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 typedef struct Frame {
     addr_t pc = 0;
     addr_t sp = 0;
     addr_t offsetInElf = 0;
     addr_t offsetInSymbol = 0;
-    char elfPath[256]{};
-    char symbol[256]{};
+    char elfPath[MAX_STR_SIZE]{};
+    char symbol[MAX_STR_SIZE]{};
 } Frame;
 
 bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);

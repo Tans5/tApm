@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <sys/types.h>
 #include "../linkedlist/linked_list.h"
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 typedef struct T_ElfHeader {
     uint32_t programHeaderOffset = 0;
@@ -34,7 +34,7 @@ typedef struct T_ProgramHeader {
 } T_ProgramHeader;
 
 typedef struct T_SectionHeader {
-    char name[256] {};
+    char name[MAX_STR_SIZE] {};
     uint32_t type = 0;
     uint32_t flags = 0;
     addr_t offset = 0;
@@ -72,7 +72,7 @@ typedef struct T_Elf {
 
 } T_Elf;
 
-int readString(char* dst, const char * src, uint32_t startIndex, int maxSize);
+int readString(char* dst, const char * src, uint32_t startIndex);
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 

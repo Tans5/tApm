@@ -7,7 +7,7 @@
 #include "../thread/tapm_thread.h"
 #include "../linkedlist/linked_list.h"
 #include "t_regs.h"
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 
 typedef struct ThreadStatus {

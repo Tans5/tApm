@@ -6,7 +6,7 @@
 #define TAPM_PROCESS_READ_H
 
 #include <sys/types.h>
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 size_t processRead(pid_t pid, addr_t remote_addr, void* dst, size_t dst_len);
 

@@ -10,19 +10,18 @@
 #include <cstring>
 #include "tapm_thread.h"
 
-#define BUFFER_SIZE 256
 
 void forEachThreads(pid_t pid, void * context, bool (*action)(const pid_t tid, const char * threadName, int threadNameSize, void *context)) {
-    char processPath[BUFFER_SIZE];
+    char processPath[MAX_STR_SIZE];
     int size = sprintf(processPath, "/proc/%d/task", pid);
-    if (size >= BUFFER_SIZE) {
+    if (size >= MAX_STR_SIZE) {
         return;
     }
     DIR * processDir = opendir(processPath);
     if (processDir != nullptr) {
         dirent *child = readdir(processDir);
-        char fileNameFilePath[BUFFER_SIZE];
-        char threadName[BUFFER_SIZE];
+        char fileNameFilePath[MAX_STR_SIZE];
+        char threadName[MAX_STR_SIZE];
         while (child != nullptr) {
             auto childFileName = child->d_name;
             char * endPtr;
@@ -32,14 +31,14 @@ void forEachThreads(pid_t pid, void * context, bool (*action)(const pid_t tid, c
                 pid_t tid = numToCheck;
 
                 size = sprintf(fileNameFilePath, "%s/%s/comm", processPath, childFileName);
-                if (size >= BUFFER_SIZE) {
+                if (size >= MAX_STR_SIZE) {
                     continue;
                 }
                 int fd = open(fileNameFilePath, O_RDONLY);
                 if (fd == -1) {
                     continue;
                 }
-                size = read(fd, threadName, BUFFER_SIZE);
+                size = read(fd, threadName, MAX_STR_SIZE);
                 if (size > 0) {
                     // remove '\n'
                     threadName[size - 1] = '\0';

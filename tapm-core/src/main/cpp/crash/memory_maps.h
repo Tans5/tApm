@@ -10,7 +10,7 @@
 #include <../linkedlist/linked_list.h>
 #include "t_elf.h"
 #include "file_mmap.h"
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 #define ANDROID_10_ABORT_MSG_MAP_PATH "[anon:abort message]"
 
@@ -32,7 +32,7 @@ typedef struct MemoryMap {
         unsigned minor = 0;
     } device;
     uint64_t inode = 0;
-    char pathname[256] {};
+    char pathname[MAX_STR_SIZE] {};
     bool isMapPortDevice = false;
     T_Elf *elf = nullptr;
     bool isLoadedElf = false;

@@ -6,7 +6,7 @@
 #define TAPM_T_REGS_H
 
 #include <sys/ucontext.h>
-#include "../tapm_addr.h"
+#include "../tapm_size.h"
 
 /***
  * arm64

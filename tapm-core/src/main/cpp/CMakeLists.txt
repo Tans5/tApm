@@ -78,7 +78,7 @@ add_library(
         tapm SHARED
         jni.cpp
         tapm_log.h
-        tapm_addr.h
+        tapm_size.h
         time/tapm_time.h
         time/tapm_time.cpp
         linkedlist/linked_list.h

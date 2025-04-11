@@ -10,15 +10,15 @@
 #include "memory_maps.h"
 #include "../tapm_log.h"
 
-int readString(char* dst, const char * src, uint32_t startIndex, int maxSize) {
-    for (int i = 0; i < maxSize; i ++) {
+int readString(char* dst, const char * src, uint32_t startIndex) {
+    for (int i = 0; i < MAX_STR_SIZE; i ++) {
         char c = src[startIndex + i];
         dst[i] = c;
         if (c == '\0') {
             return i;
         }
     }
-    return maxSize;
+    return MAX_STR_SIZE;
 }
 
 bool isElfFile(const uint8_t *buffer, size_t bufferSize) {
@@ -116,7 +116,7 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             memcpy(&sectionHeader, buffer + position, sizeof(sectionHeader));
             position += sizeof(sectionHeader);
             auto h = new T_SectionHeader;
-            readString(h->name, shStrTab, (int) sectionHeader.sh_name, 256);
+            readString(h->name, shStrTab, (int) sectionHeader.sh_name);
             h->type = sectionHeader.sh_type;
             h->offset = sectionHeader.sh_offset;
             h->flags = sectionHeader.sh_flags;
@@ -201,7 +201,7 @@ static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSe
         auto symbolEnd = symbol.st_size + symbolStart;
         if (elfOffset >= symbolStart && elfOffset < symbolEnd) {
             *outputSymbolOffset = (elfOffset - symbolStart);
-            readString(outputSymbolName, reinterpret_cast<const char *>(elfData + strSectionHeader->offset), symbol.st_name, 256);
+            readString(outputSymbolName, reinterpret_cast<const char *>(elfData + strSectionHeader->offset), symbol.st_name);
             result = true;
             break;
         }

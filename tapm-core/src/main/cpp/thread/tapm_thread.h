@@ -6,9 +6,10 @@
 #define TAPM_TAPM_THREAD_H
 #include <sys/types.h>
 #include "../linkedlist/linked_list.h"
+#include "../tapm_size.h"
 
 typedef struct tApmThread {
-    char threadName[256] {};
+    char threadName[MAX_STR_SIZE] {};
     pid_t tid = 0;
 } tApmThread;
 

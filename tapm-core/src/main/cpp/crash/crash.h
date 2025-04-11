@@ -9,6 +9,7 @@
 #include <csignal>
 #include <jni.h>
 #include "../linkedlist/linked_list.h"
+#include "../tapm_size.h"
 
 static int CRASH_SIGNAL[8] = {
        SIGABRT, // 程序主动调用 abort() 函数终止自身
@@ -30,7 +31,7 @@ typedef struct CrashSignal {
     int64_t crashTime = 0;
     pid_t crashPid = 0;
     pid_t crashTid = 0;
-    char crashFilePath[256];
+    char crashFilePath[2 * MAX_STR_SIZE]{};
 } CrashSignal;
 
 typedef struct OldCrashSignalAction {

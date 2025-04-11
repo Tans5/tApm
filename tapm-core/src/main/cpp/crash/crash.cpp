@@ -167,7 +167,7 @@ static int handleCrash(CrashSignal *crashSignal) {
     });
 
 
-    char abortMsg[256];
+    char abortMsg[MAX_STR_SIZE];
     if (tryFindAbortMsg(crashSignal->crashPid, &memoryMaps, abortMsg)) {
         std::string s(abortMsg);
         LOGD("Found abort msg: %s", s.c_str());
@@ -205,11 +205,6 @@ static int handleCrashOnNewThread(CrashSignal *crashSignal) {
     LOGD("Receive crash sig: %d", crashSignal->sig);
     pthread_attr_t attr;
     pthread_t t;
-#if defined(__i386__) || defined(__arm__)
-    int stackSize = 256 * 1024 * 1024; // 256k
-#else
-    int stackSize = 512 * 1024 * 1024; // 512k
-#endif
     int ret = prctl(PR_SET_DUMPABLE, 1);
     void * threadRet = nullptr;
     if (ret != 0) {
@@ -233,7 +228,7 @@ static int handleCrashOnNewThread(CrashSignal *crashSignal) {
         goto End;
     }
 
-    ret = pthread_attr_setstacksize(&attr, stackSize);
+    ret = pthread_attr_setstacksize(&attr, MAX_THREAD_STACK_SIZE);
     if (ret != 0) {
         LOGE("Set thread stack size fail: %d", ret);
         ret = -1;
@@ -317,8 +312,8 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
         };
         memcpy(&crashSignal.sigInfo, sig_info, sizeof(siginfo_t));
         memcpy(&crashSignal.userContext, uc, sizeof(crashSignal.userContext));
-        char crashFileName[32];
-        formatTime(crashSignal.crashTime, crashFileName, 64);
+        char crashFileName[MAX_STR_SIZE];
+        formatTime(crashSignal.crashTime, crashFileName, MAX_STR_SIZE);
         sprintf(crashSignal.crashFilePath, "%s/%s", monitor->crashOutputDir, crashFileName);
         int ret = pthread_mutex_trylock(&lock);
         if (ret == 0) {
