@@ -156,7 +156,7 @@ static int handleCrash(CrashSignal *crashSignal) {
 
     crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
         auto threadStatus = static_cast<ThreadStatus *>(s);
-        LinkedList *memoryMaps = static_cast<LinkedList *>(m);
+        auto *memoryMaps = static_cast<LinkedList *>(m);
         LinkedList frames;
         LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
         unwindFramesLocal(threadStatus, memoryMaps, &frames, 64);

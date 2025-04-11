@@ -7,11 +7,11 @@
 #include <unistd.h>
 #include "process_read.h"
 
-size_t processRead(pid_t pid, uintptr_t remote_addr, void* dst, size_t dst_len) {
+size_t processRead(pid_t pid, addr_t remote_addr, void* dst, size_t dst_len) {
     // 获取系统页大小，通常是 4096
-    auto page_size = (size_t)sysconf(_SC_PAGE_SIZE);
+    auto page_size = (addr_t) sysconf(_SC_PAGE_SIZE);
     struct iovec src_iovs[64];
-    uintptr_t cur_remote_addr = remote_addr;
+    addr_t cur_remote_addr = remote_addr;
     size_t total_read = 0;
 
     // 一个一个内存页面读取，最大支持 64 个内存页面，单次最大读取的数据大小是 64 * page_size，超过了进入下次循环再次读取。
@@ -27,9 +27,9 @@ size_t processRead(pid_t pid, uintptr_t remote_addr, void* dst, size_t dst_len) 
 
             // fill iov_len (one page at a time, page boundaries aligned)
             // 计算页内地址偏移
-            uintptr_t misalignment = cur_remote_addr & (page_size - 1);
+            addr_t misalignment = cur_remote_addr & (page_size - 1);
             // 当前页剩余可读长度
-            size_t iov_len = page_size - misalignment;
+            addr_t iov_len = page_size - misalignment;
             src_iovs[iovecs_used].iov_len = (iov_len > dst_len ? dst_len : iov_len);
 
             // 判断是否溢出

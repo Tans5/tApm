@@ -7,6 +7,7 @@
 #include "../thread/tapm_thread.h"
 #include "../linkedlist/linked_list.h"
 #include "t_regs.h"
+#include "../tapm_addr.h"
 
 
 typedef struct ThreadStatus {
@@ -14,9 +15,9 @@ typedef struct ThreadStatus {
     bool isSuspend = false;
     bool isGetRegs = false;
     regs_t regs{};
-    uint64_t pc = 0;
-    uint64_t sp = 0;
-    uint64_t fp = 0;
+    addr_t pc = 0;
+    addr_t sp = 0;
+    addr_t fp = 0;
     ucontext_t *crashSignalCtx = nullptr;
 } ThreadStatus;
 

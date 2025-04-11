@@ -189,7 +189,7 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
     }
 }
 
-static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSectionHeader, T_SectionHeader *strSectionHeader, uint64_t elfOffset, char * outputSymbolName, uint64_t *outputSymbolOffset) {
+static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSectionHeader, T_SectionHeader *strSectionHeader, addr_t elfOffset, char * outputSymbolName, addr_t *outputSymbolOffset) {
     bool result = false;
     uint32_t position = symbolSectionHeader->offset;
     ElfW(Sym) symbol;
@@ -212,7 +212,7 @@ static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSe
     return result;
 }
 
-bool readAddressSymbol(T_Elf *elf, uint64_t elfOffset, char *outputSymbolName, uint64_t *outputSymbolOffset) {
+bool readAddressSymbol(T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset) {
     bool result = false;
     if (elf->dynsymHeader != nullptr && elf->dynstrHeader != nullptr) {
         // Find symbol from .dynsym

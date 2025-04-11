@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include "file_mmap.h"
 
-bool fileMmapRead(const char* filePath, uint64_t offset, uint64_t requireMinSize, Mapped *output) {
+bool fileMmapRead(const char* filePath, addr_t offset, uint64_t requireMinSize, Mapped *output) {
     auto fileFd = open(filePath, O_RDONLY | O_CLOEXEC);
     if (fileFd == -1) {
         return false;
@@ -23,7 +23,7 @@ bool fileMmapRead(const char* filePath, uint64_t offset, uint64_t requireMinSize
     }
 }
 
-bool fileMmapRead(int fileFd, uint64_t fileSize, uint64_t offset, uint64_t requireMinSize, Mapped *output) {
+bool fileMmapRead(int fileFd, uint64_t fileSize, addr_t offset, uint64_t requireMinSize, Mapped *output) {
     if (offset + requireMinSize > fileSize || fileFd < 0 || !output) {
         return false;
     }

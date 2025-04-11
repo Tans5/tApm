@@ -131,7 +131,7 @@ void readRegsFromUContext(ucontext_t *context, regs_t *outputRegs) {
 #endif
 }
 
-uint64_t getPc(regs_t *regs) {
+addr_t getPc(regs_t *regs) {
 #if defined(__aarch64__)
     return regs->pc;
 #elif defined(__arm__)
@@ -143,7 +143,7 @@ uint64_t getPc(regs_t *regs) {
 #endif
 }
 
-uint64_t getSp(regs_t *regs) {
+addr_t getSp(regs_t *regs) {
 #if defined(__aarch64__)
     return regs->sp;
 #elif defined(__arm__)
@@ -155,7 +155,7 @@ uint64_t getSp(regs_t *regs) {
 #endif
 }
 
-uint64_t getFp(regs_t *regs) {
+addr_t getFp(regs_t *regs) {
 #if defined(__aarch64__)
     return regs->regs[29];
 #elif defined(__arm__)

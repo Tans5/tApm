@@ -8,13 +8,14 @@
 #include <cstdint>
 #include <sys/types.h>
 #include "../linkedlist/linked_list.h"
+#include "../tapm_addr.h"
 
 typedef struct T_ElfHeader {
     uint32_t programHeaderOffset = 0;
     uint32_t programHeaderEntrySize = 0;
     uint32_t programHeaderNum = 0;
 
-    uint32_t sectionHeaderOffset = 0;
+    addr_t sectionHeaderOffset = 0;
     uint32_t sectionHeaderEntrySize = 0;
     uint32_t sectionHeaderNum = 0;
     uint32_t sectionNameStrIndex = 0;
@@ -23,21 +24,21 @@ typedef struct T_ElfHeader {
 typedef struct T_ProgramHeader {
     uint32_t type = 0;
     uint32_t flags = 0;
-    uint32_t offset = 0;
-    uint64_t virtualAddress = 0;
-    uint64_t physAddress = 0;
+    addr_t offset = 0;
+    addr_t virtualAddress = 0;
+    addr_t physAddress = 0;
     uint32_t sizeInFile = 0;
     uint32_t sizeInMemory = 0;
     uint32_t align = 0;
-    uint32_t bias = 0;
+    addr_t bias = 0;
 } T_ProgramHeader;
 
 typedef struct T_SectionHeader {
     char name[256] {};
     uint32_t type = 0;
     uint32_t flags = 0;
-    uint32_t offset = 0;
-    uint64_t virtualAddress = 0;
+    addr_t offset = 0;
+    addr_t virtualAddress = 0;
     uint32_t sizeInFile = 0;
     uint32_t link = 0;
     uint32_t info = 0;
@@ -78,7 +79,7 @@ bool isElfFile(const uint8_t *buffer, size_t bufferSize);
 
 bool parseElf(const uint8_t *buffer, T_Elf *output);
 
-bool readAddressSymbol(T_Elf *elf, uint64_t elfOffset, char *outputSymbolName, uint64_t * outputSymbolOffset);
+bool readAddressSymbol(T_Elf *elf, addr_t elfOffset, char *outputSymbolName, addr_t * outputSymbolOffset);
 
 void recycleElf(T_Elf *toRecycle);
 

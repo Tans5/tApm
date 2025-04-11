@@ -6,6 +6,7 @@
 #define TAPM_T_REGS_H
 
 #include <sys/ucontext.h>
+#include "../tapm_addr.h"
 
 /***
  * arm64
@@ -255,10 +256,10 @@ int setRegsByPtrace(pid_t tid, regs_t *regs);
 
 void readRegsFromUContext(ucontext_t *context, regs_t *outputRegs);
 
-uint64_t getPc(regs_t *regs);
+addr_t getPc(regs_t *regs);
 
-uint64_t getSp(regs_t *regs);
+addr_t getSp(regs_t *regs);
 
-uint64_t getFp(regs_t *regs);
+addr_t getFp(regs_t *regs);
 
 #endif //TAPM_T_REGS_H

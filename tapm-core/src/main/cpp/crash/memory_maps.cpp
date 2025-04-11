@@ -80,7 +80,7 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
             if (mapSize <= (sizeof(uint64_t) * 2 + sizeof(size_t) + 1)) {
                 return false;
             }
-            uint64_t readAddress = abortMsgMap->startAddr;
+            addr_t readAddress = abortMsgMap->startAddr;
             uint64_t code;
             processRead(pid, readAddress, &code, sizeof(code));
             if (code != ANDROID_10_ABORT_MSG_MAGIC_1) {
@@ -112,7 +112,7 @@ bool tryFindAbortMsg(pid_t pid, LinkedList *maps, char *output) {
     }
 }
 
-bool findMemoryMapByAddress(uint64_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous) {
+bool findMemoryMapByAddress(addr_t address, LinkedList *maps, MemoryMap **target, MemoryMap ** previous) {
     Iterator iterator;
     maps->iterator(&iterator);
     MemoryMap * p = nullptr;
@@ -257,8 +257,8 @@ bool tryLoadElf(MemoryMap *memoryMap, MemoryMap *previousMemoryMap) {
     }
 }
 
-uint64_t convertAddressToElfOffset(MemoryMap *memoryMap, uint64_t address) {
-    uint64_t bias = 0;
+addr_t convertAddressToElfOffset(MemoryMap *memoryMap, addr_t address) {
+    addr_t bias = 0;
     if (memoryMap->elf != nullptr && memoryMap->elf->loadXHeader != nullptr) {
         bias = memoryMap->elf->loadXHeader->bias;
     }

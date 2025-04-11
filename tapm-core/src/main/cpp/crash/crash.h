@@ -10,18 +10,6 @@
 #include <jni.h>
 #include "../linkedlist/linked_list.h"
 
-#if defined(__aarch64__)
-#define CPU_ARCH "arm64"
-#elif defined(__arm__)
-#define CPU_ARCH "arm"
-#elif defined(__x86_64__)
-#define CPU_ARCH "x86_64"
-#elif defined(__i386__)
-#define CPU_ARCH "x86"
-#else
-#define CPU_ARCH "unknown"
-#endif
-
 static int CRASH_SIGNAL[8] = {
        SIGABRT, // 程序主动调用 abort() 函数终止自身
        SIGBUS, // 对齐错误/物理地址异常
