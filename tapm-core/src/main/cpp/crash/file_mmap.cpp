@@ -9,6 +9,14 @@
 #include "file_mmap.h"
 
 bool fileMmapRead(const char* filePath, addr_t offset, uint64_t requireMinSize, Mapped *output) {
+
+    if (access(filePath, F_OK) != 0) {
+        return false;
+    }
+    if (access(filePath, R_OK) != 0) {
+        return false;
+    }
+
     auto fileFd = open(filePath, O_RDONLY | O_CLOEXEC);
     if (fileFd == -1) {
         return false;
