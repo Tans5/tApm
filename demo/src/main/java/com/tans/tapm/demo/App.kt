@@ -96,6 +96,7 @@ class App : Application() {
                             editor.getFile(0).outputStream().use { os ->
                                 os.write(t.anrTraceData.toByteArray(Charsets.UTF_8))
                             }
+                            editor.commit()
                         }
 
                         AppLog.d(TAG, "Write anr trace file success.")
