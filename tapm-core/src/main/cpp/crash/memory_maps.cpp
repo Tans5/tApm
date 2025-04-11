@@ -263,13 +263,14 @@ addr_t convertAddressToElfOffset(MemoryMap *memoryMap, addr_t address) {
     return address - (memoryMap->startAddr - memoryMap->elfLoadedStart - bias);
 }
 
-bool loadElfSymbol(addr_t address, LinkedList *maps, addr_t *outputElfOffset, char *outputSymbol, addr_t *outputSymbolOffset) {
+bool loadElfSymbol(addr_t address, LinkedList *maps, char *outputElfPath, addr_t *outputElfOffset, char *outputSymbol, addr_t *outputSymbolOffset) {
     MemoryMap *memoryMap = nullptr;
     findMemoryMapByAddress(address, maps, &memoryMap);
     if (memoryMap == nullptr) {
         LOGE("Don't fil memory map for address 0x%llx", (uint64_t) address);
         return false;
     }
+    memcpy(outputElfPath, memoryMap->pathname, sizeof(memoryMap->pathname));
     auto elfOffset = convertAddressToElfOffset(memoryMap, address);
     *outputElfOffset = elfOffset;
     if (tryLoadElf(memoryMap)) {

@@ -56,15 +56,20 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
                     anrTraceData = anrTraceData)
             )
         } else {
-            if (checkCurrentProcessInAnr()) {
-                dispatchMonitorData(
-                    Anr(time = time,
-                        isSigFromMe = false,
-                        anrTraceData = anrTraceData)
-                )
-            } else {
-                tApmLog.e(TAG, "Receive SIGQUIT signal, but current process not in anr.")
-            }
+//            if (checkCurrentProcessInAnr()) {
+//                dispatchMonitorData(
+//                    Anr(time = time,
+//                        isSigFromMe = false,
+//                        anrTraceData = anrTraceData)
+//                )
+//            } else {
+//                tApmLog.e(TAG, "Receive SIGQUIT signal, but current process not in anr.")
+//            }
+            dispatchMonitorData(
+                Anr(time = time,
+                    isSigFromMe = false,
+                    anrTraceData = anrTraceData)
+            )
         }
     }
 

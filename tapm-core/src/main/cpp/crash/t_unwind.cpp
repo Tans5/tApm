@@ -81,8 +81,7 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
 
     unw_cursor_t cursor;
     unw_word_t ip, sp;
-    MemoryMap *map = nullptr;
-    MemoryMap *mapPre = nullptr;
+    Iterator i;
 
     unw_addr_space_t remote_as = unw_create_addr_space(&_UPT_accessors, 0);
     void *context = _UPT_create(targetThread->thread->tid);
@@ -104,6 +103,19 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
         f->sp = sp;
         outputFrames->addToLast(f);
     } while(outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
+
+    outputFrames->iterator(&i);
+    while(i.containValue()) {
+        auto f = static_cast<Frame *>(i.value());
+        loadElfSymbol(f->pc, memoryMaps, f->elfPath, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
+        i.next();
+    }
+    memoryMaps->iterator(&i);
+    while (i.containValue()) {
+        auto m = static_cast<MemoryMap *>(i.value());
+        recycleElfFileMap(m);
+        i.next();
+    }
 
     End:
     _UPT_destroy(context);
@@ -144,6 +156,20 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
 
         outputFrames->addToLast(f);
     } while (outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
+
+    Iterator i;
+    outputFrames->iterator(&i);
+    while(i.containValue()) {
+        auto f = static_cast<Frame *>(i.value());
+        loadElfSymbol(f->pc, memoryMaps, f->elfPath, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
+        i.next();
+    }
+    memoryMaps->iterator(&i);
+    while (i.containValue()) {
+        auto m = static_cast<MemoryMap *>(i.value());
+        recycleElfFileMap(m);
+        i.next();
+    }
 
     return true;
 }
