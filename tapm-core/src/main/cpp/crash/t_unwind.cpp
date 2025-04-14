@@ -98,6 +98,23 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
             break;
         }
         unw_get_reg(&cursor, UNW_REG_SP, &sp);
+        if (outputFrames->size != 0) {
+#if defined(__aarch64__)
+            if (ip >= 4) {
+                ip -= 4;
+            }
+#elif defined(__arm__)
+            if (pc & 0x1) {
+                if (ip >= 4) {
+                    ip -= 4;
+                }
+            } else {
+                if (ip >= 8) {
+                    ip -= 8;
+                }
+            }
+#endif
+        }
         auto f = new Frame;
         f->pc = ip;
         f->sp = sp;
@@ -150,6 +167,23 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
             break;
         }
         unw_get_reg(&cursor, UNW_REG_SP, &sp);
+        if (outputFrames->size != 0) {
+#if defined(__aarch64__)
+            if (ip >= 4) {
+                ip -= 4;
+            }
+#elif defined(__arm__)
+            if (pc & 0x1) {
+                if (ip >= 4) {
+                    ip -= 4;
+                }
+            } else {
+                if (ip >= 8) {
+                    ip -= 8;
+                }
+            }
+#endif
+        }
         auto f = new Frame;
         f->pc = ip;
         f->sp = sp;
