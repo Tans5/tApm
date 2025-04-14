@@ -2,6 +2,7 @@ package com.tans.tapm.monitors
 
 import android.util.Log
 import androidx.annotation.Keep
+import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.NativeCrash
 import com.tans.tapm.tApm
 import java.io.File
@@ -19,16 +20,25 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
 
     override fun onStart(apm: tApm) {
         val dir = File(cacheBaseDir, "NativeCrash")
-        if (!dir.isDirectory) {
-            dir.mkdirs()
+        val isDirInitSuccess = if (!dir.isDirectory) {
+            try {
+                dir.mkdirs()
+            } catch (e: Throwable) {
+                tApmLog.e(TAG, "Create dir fail: ${e.message}", e)
+                false
+            }
+        } else {
+            true
         }
-        executor.executeOnMainThread {
-            val ptr = registerNativeCrashMonitorNative(dir.canonicalPath)
-            if (ptr != 0L) {
-                nativePtr = ptr
-                Log.d(TAG, "NativeCrashMonitor started.")
-            } else {
-                Log.e(TAG, "Start NativeCrashMonitor failed.")
+        if (isDirInitSuccess) {
+            executor.executeOnMainThread {
+                val ptr = registerNativeCrashMonitorNative(dir.canonicalPath)
+                if (ptr != 0L) {
+                    nativePtr = ptr
+                    Log.d(TAG, "NativeCrashMonitor started.")
+                } else {
+                    Log.e(TAG, "Start NativeCrashMonitor failed.")
+                }
             }
         }
     }

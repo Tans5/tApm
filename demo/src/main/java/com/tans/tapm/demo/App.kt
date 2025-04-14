@@ -74,35 +74,7 @@ class App : Application() {
                     t: Anr,
                     apm: tApm
                 ) {
-                    AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTime()}, isSigFromMe: ${t.isSigFromMe}")
-                    try {
-                        AppLog.d(TAG, "Start write anr trace file.")
-                        val diskCache = DiskLruCache.open(
-                            directory = File(this@App.getExternalFilesDir(null), "Anr"),
-                            appVersion = 1,
-                            valueCount = 1,
-                            maxSize = 1024 * 1024 * 30, // 30MB
-                        )
-
-                        diskCache.use {
-                            val format = SimpleDateFormat("yyyy-MM-dd_hh:mm:ss.SSS", Locale.US).format(t.time)
-                            val timeStr = format.format(t.time)
-                            val key = if (!t.isSigFromMe) {
-                                "${timeStr}_anr"
-                            } else {
-                                timeStr
-                            }
-                            val editor = it.edit(key)!!
-                            editor.getFile(0).outputStream().use { os ->
-                                os.write(t.anrTraceData.toByteArray(Charsets.UTF_8))
-                            }
-                            editor.commit()
-                        }
-
-                        AppLog.d(TAG, "Write anr trace file success.")
-                    } catch (e: Throwable) {
-                        AppLog.e(TAG, "Write anr trace fail fail.", e)
-                    }
+                    AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTime()}, isSigFromMe: ${t.isSigFromMe}, anrTraceFile=${t.anrTraceFile}")
                 }
             })
             // .addMonitor(BreakpadNativeCrashMonitor())

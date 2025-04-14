@@ -24,8 +24,7 @@ static int32_t hookWriteMethod(bool isAddHook);
 static size_t my_write(int fd, const void * const buf, size_t count);
 
 typedef struct HandleAnrDataThreadArgs{
-    void * data = nullptr;
-    size_t dataLen = 0;
+    char anrTraceFile[MAX_STR_SIZE * 2] {};
 } HandleAnrDataThreadArgs;
 
 static void* handleAnrDataThread(void * arg);
@@ -90,10 +89,30 @@ static size_t my_write(int fd, const void *const buf, size_t count) {
             char *copy = static_cast<char *>(malloc(count));
             memcpy(copy, buf, count);
             auto args = new HandleAnrDataThreadArgs;
-            args->data = copy;
-            args->dataLen = count;
-            pthread_t t;
-            pthread_create(&t, nullptr, handleAnrDataThread, args);
+            char crashFileName[MAX_STR_SIZE];
+            formatTime(writingAnrData->anrTime, crashFileName, MAX_STR_SIZE);
+            sprintf(args->anrTraceFile, "%s/%s", anrMonitor->anrOutputDir, crashFileName);
+            auto traceFileFd = open(args->anrTraceFile, O_CREAT | O_RDWR, 0666);
+            if (traceFileFd <= 0) {
+                LOGE("Create anr trace file fail.");
+                delete args;
+            } else {
+                int writeCount = origin_write(traceFileFd, buf, count);
+                close(traceFileFd);
+                if (writeCount <= 0) {
+                    LOGE("Write anr trace file fail.");
+                    delete args;
+                } else {
+                    pthread_t t;
+                    pthread_attr_t attr;
+                    if (pthread_attr_init(&attr) == 0 && pthread_attr_setstacksize(&attr, MAX_THREAD_STACK_SIZE) == 0) {
+                        pthread_create(&t, &attr, handleAnrDataThread, args);
+                    } else {
+                        LOGE("Init thread attr fail.");
+                    }
+                    pthread_attr_destroy(&attr);
+                }
+            }
         }
     }
     return origin_write(fd, buf, count);
@@ -123,14 +142,13 @@ static void* handleAnrDataThread(void * arg_v) {
             auto jAnrMonitorClazz = env->GetObjectClass(jAnrMonitor);
             // auto jAnrMonitorClazz = env->FindClass("com/tans/tapm/monitors/AnrMonitor");
             auto anrMethodId = env->GetMethodID(jAnrMonitorClazz, "onAnr", "(JZLjava/lang/String;)V");
-            auto anrStackTrackJString = env->NewStringUTF(reinterpret_cast<const char *>(static_cast<const jchar *>(arg->data)));
+            auto anrStackTrackJString = env->NewStringUTF(arg->anrTraceFile);
             env->CallVoidMethod(jAnrMonitor, anrMethodId, writingAnrData->anrTime, writingAnrData->isFromMe, anrStackTrackJString);
         }
     } else {
         LOGE("Wrong state, can't handle anr trace data.");
     }
-    free(arg->data);
-    free(arg);
+    delete arg;
     writingAnrData = nullptr;
     hookWriteMethod(false);
     pthread_mutex_unlock(&lock);
@@ -187,13 +205,13 @@ static void anrSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
     }
 }
 
-int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject) {
+int32_t Anr::prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring j_AnrFileOutputDir) {
     if (!isInited) { init(); }
     pthread_mutex_lock(&lock);
 
     jniEnv->GetJavaVM(&this->jvm);
     this->jAnrMonitor = jniEnv->NewGlobalRef(j_AnrObject);
-
+    this->anrOutputDir = strdup(jniEnv->GetStringUTFChars(j_AnrFileOutputDir, JNI_FALSE));
     tApmThread signalCatcher;
     int ret = findThreadByName(getpid(), "Signal Catcher", &signalCatcher);
 
@@ -266,6 +284,11 @@ void Anr::release(JNIEnv *jniEnv) {
         delete this ->oldQuitSigAction;
         this->oldQuitSigAction = nullptr;
     }
+
+    if (this->anrOutputDir != nullptr) {
+        free(this->anrOutputDir);
+        this->anrOutputDir = nullptr;
+    }
+
     pthread_mutex_unlock(&lock);
-    delete this;
 }

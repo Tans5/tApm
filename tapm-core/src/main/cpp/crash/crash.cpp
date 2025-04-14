@@ -418,8 +418,6 @@ void Crash::release(JNIEnv *jniEnv) {
         delete oldCrashSignalActions;
         this->oldCrashSignalActions = nullptr;
     }
-
-    delete this;
     workingMonitor = nullptr;
     pthread_mutex_unlock(&lock);
 }

@@ -11,14 +11,16 @@
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_tans_tapm_monitors_AnrMonitor_registerAnrMonitorNative(
         JNIEnv * env,
-        jobject javaAnrMonitor) {
+        jobject javaAnrMonitor,
+        jstring anrFileDir) {
 
     auto anr = new Anr;
-    auto ret = anr->prepare(env, javaAnrMonitor);
+    auto ret = anr->prepare(env, javaAnrMonitor, anrFileDir);
     if (ret == 0) {
         return (int64_t) anr;
     } else {
         anr->release(env);
+        delete anr;
         return 0L;
     }
 }
@@ -29,7 +31,9 @@ Java_com_tans_tapm_monitors_AnrMonitor_unregisterAnrMonitorNative(
         jobject javaAnrMonitor,
         jlong anrPtr) {
     if (anrPtr != 0L) {
-        reinterpret_cast<Anr *>(anrPtr)->release(env);
+        auto anr = reinterpret_cast<Anr *>(anrPtr);
+        anr ->release(env);
+        delete anr;
     }
 }
 
@@ -45,6 +49,7 @@ Java_com_tans_tapm_monitors_NativeCrashMonitor_registerNativeCrashMonitorNative(
         return (int64_t) crash;
     } else {
         crash->release(env);
+        delete crash;
         return 0L;
     }
 }
@@ -65,6 +70,8 @@ Java_com_tans_tapm_monitors_NativeCrashMonitor_unregisterNativeCrashMonitorNativ
         jobject javaAnrMonitor,
         jlong crashPtr) {
     if (crashPtr != 0L) {
-        reinterpret_cast<Crash *>(crashPtr)->release(env);
+        auto crash = reinterpret_cast<Crash *>(crashPtr);
+        crash ->release(env);
+        delete crash;
     }
 }

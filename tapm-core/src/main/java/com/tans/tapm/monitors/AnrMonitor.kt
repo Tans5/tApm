@@ -7,6 +7,7 @@ import androidx.annotation.Keep
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.Anr
 import com.tans.tapm.tApm
+import java.io.File
 
 @Keep
 class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
@@ -19,13 +20,26 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
 
     override fun onStart(apm: tApm) {
         // Register SIGQUIT need on MainThread.
-        executor.executeOnMainThread {
-            val ptr = registerAnrMonitorNative()
-            if (ptr != 0L) {
-                this.nativePtr = ptr
-                tApmLog.d(TAG, "AnrMonitor started.")
-            } else {
-                tApmLog.e(TAG, "Start AnrMonitor failed.")
+        val dir = File(cacheBaseDir, "Anr")
+        val isDirInitSuccess = if (!dir.isDirectory) {
+            try {
+                dir.mkdirs()
+            } catch (e: Throwable) {
+                tApmLog.e(TAG, "Create dir fail: ${e.message}", e)
+                false
+            }
+        } else {
+            true
+        }
+        if (isDirInitSuccess) {
+            executor.executeOnMainThread {
+                val ptr = registerAnrMonitorNative(dir.canonicalPath)
+                if (ptr != 0L) {
+                    this.nativePtr = ptr
+                    tApmLog.d(TAG, "AnrMonitor started.")
+                } else {
+                    tApmLog.e(TAG, "Start AnrMonitor failed.")
+                }
             }
         }
     }
@@ -47,13 +61,13 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
     /**
      * Call by native code.
      */
-    fun onAnr(time: Long, isSigFromMe: Boolean, anrTraceData: String) {
-        tApmLog.e(TAG, "Receive SIGQUIT signal, isFromMe=$isSigFromMe")
+    fun onAnr(time: Long, isSigFromMe: Boolean, anrTraceFile: String) {
+        tApmLog.e(TAG, "Receive SIGQUIT signal, isFromMe=$isSigFromMe, anrTraceFilePath=$anrTraceFile")
         if (isSigFromMe) {
             dispatchMonitorData(
                 Anr(time = time,
                     isSigFromMe = true,
-                    anrTraceData = anrTraceData)
+                    anrTraceFile = anrTraceFile)
             )
         } else {
 //            if (checkCurrentProcessInAnr()) {
@@ -68,11 +82,14 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
             dispatchMonitorData(
                 Anr(time = time,
                     isSigFromMe = false,
-                    anrTraceData = anrTraceData)
+                    anrTraceFile = anrTraceFile)
             )
         }
     }
 
+    /**
+     * // TODO: Adjust blow code.
+     */
     private fun checkCurrentProcessInAnr(): Boolean {
         val am = application.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val errorProcesses = am.processesInErrorState
@@ -92,7 +109,7 @@ class AnrMonitor : AbsMonitor<Anr>(Long.MAX_VALUE) {
         return false
     }
 
-    private external fun registerAnrMonitorNative(): Long
+    private external fun registerAnrMonitorNative(anrFileDir: String): Long
 
     private external fun unregisterAnrMonitorNative(nativePtr: Long)
 

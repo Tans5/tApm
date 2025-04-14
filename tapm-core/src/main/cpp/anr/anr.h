@@ -25,7 +25,9 @@ typedef struct Anr {
     sigset_t *oldBlockSigSets = nullptr;
     sigaction_p *oldQuitSigAction = nullptr;
 
-    int32_t prepare(JNIEnv *jniEnv, jobject jAnrObject);
+    char * anrOutputDir = nullptr;
+
+    int32_t prepare(JNIEnv *jniEnv, jobject j_AnrObject, jstring j_AnrFileOutputDir);
 
     void release(JNIEnv *jniEnv);
 } Anr;
