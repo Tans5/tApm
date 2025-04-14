@@ -104,7 +104,7 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
                 ip -= 4;
             }
 #elif defined(__arm__)
-            if (pc & 0x1) {
+            if (ip & 0x1) {
                 if (ip >= 4) {
                     ip -= 4;
                 }
@@ -173,7 +173,7 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
                 ip -= 4;
             }
 #elif defined(__arm__)
-            if (pc & 0x1) {
+            if (ip & 0x1) {
                 if (ip >= 4) {
                     ip -= 4;
                 }

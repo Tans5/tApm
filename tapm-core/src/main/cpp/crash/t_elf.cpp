@@ -5,6 +5,7 @@
 #include <elf.h>
 #include <cstring>
 #include <link.h>
+#include <cxxabi.h>
 #include <malloc.h>
 #include "file_mmap.h"
 #include "memory_maps.h"
@@ -272,6 +273,20 @@ static bool readAddressSymbol(const uint8_t * elfData, T_SectionHeader *symbolSe
             *outputSymbolOffset = (elfOffset - symbolStart);
             readString(outputSymbolName, reinterpret_cast<const char *>(elfData + strSectionHeader->offset), symbol.st_name);
             result = true;
+            // do c++ demangling
+            int ret = 0;
+            auto demaglinged = abi::__cxa_demangle(outputSymbolName, nullptr, nullptr, &ret);
+            if (ret == 0 && demaglinged != nullptr) {
+                auto l = strlen(demaglinged);
+                if (l > MAX_STR_SIZE - 1) {
+                    l = MAX_STR_SIZE - 1;
+                }
+                memcpy(outputSymbolName, demaglinged, l);
+                outputSymbolName[l] = '\0';
+            }
+            if (demaglinged != nullptr) {
+                free(demaglinged);
+            }
             break;
         }
 
