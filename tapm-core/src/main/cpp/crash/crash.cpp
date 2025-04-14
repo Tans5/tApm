@@ -96,7 +96,7 @@ static int handleCrash(CrashSignal *crashSignal) {
     if (crashedMemoryMap != nullptr) {
         if (tryLoadElf(crashedMemoryMap)) {
             auto crashedElf = crashedMemoryMap->elf;
-            LOGD("Parse crash elf success: %s", crashedElf->soName);
+            LOGD("Parse crash elf success: %s (%s)", crashedElf->soName, crashedElf->buildId);
             auto elfHeader = crashedElf->elfHeader;
             LOGD("ELF Header: ");
             LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",

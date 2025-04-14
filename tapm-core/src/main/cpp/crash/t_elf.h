@@ -55,6 +55,7 @@ typedef struct T_Elf {
     T_ProgramHeader *gnuEhFrameHeader = nullptr;
     T_ProgramHeader *armExidxHeader = nullptr;
     T_ProgramHeader *dynamicHeader = nullptr;
+    T_ProgramHeader *noteHeader = nullptr;
 
     LinkedList sectionHeaders;
     // 符号表头
@@ -69,10 +70,9 @@ typedef struct T_Elf {
     T_SectionHeader *ehFrameHeader = nullptr;
     T_SectionHeader *ehFrameHdrHeader = nullptr;
     T_SectionHeader *gnuDebugDataHeader = nullptr;
-    T_SectionHeader *dynamicSectionHeader = nullptr;
-    T_SectionHeader *buildIdHeader = nullptr;
 
     char soName[MAX_STR_SIZE]{};
+    char buildId[MAX_STR_SIZE]{};
 } T_Elf;
 
 int readString(char* dst, const char * src, uint32_t startIndex);

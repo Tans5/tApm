@@ -48,8 +48,6 @@ const static char DEBUG_FRAME[]     = ".debug_frame";
 const static char EH_FRAME[]        = ".eh_frame";
 const static char EH_FRAME_HDR[]    = ".eh_frame_hdr";
 const static char GNU_DEBUGDATA[]   = ".gnu_debugdata";
-const static char DYNAMIC[]         = ".dynamic";
-const static char BUILD_ID[]        = ".note.gnu.build-id";
 
 
 bool parseElf(const uint8_t *buffer, T_Elf *output) {
@@ -99,6 +97,9 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
                 case PT_DYNAMIC:
                     output->dynamicHeader = h;
                     break;
+                case PT_NOTE:
+                    output->noteHeader = h;
+                    break;
                 default: {
                     break;
                 }
@@ -147,10 +148,6 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
                 output->ehFrameHdrHeader = h;
             } else if (strncmp(h->name, GNU_DEBUGDATA, sizeof(GNU_DEBUGDATA)) == 0) {
                 output->gnuDebugDataHeader = h;
-            } else if (strncmp(h->name, DYNAMIC, sizeof(DYNAMIC)) == 0) {
-                output->dynamicSectionHeader = h;
-            } else if (strncmp(h->name, BUILD_ID, sizeof(BUILD_ID)) == 0) {
-                output->buildIdHeader = h;
             }
         }
 
@@ -189,16 +186,19 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
         }
 
         // So name
-        if (output->dynamicSectionHeader != nullptr) {
-            auto offset = output->dynamicSectionHeader->offset;
-            auto size = output->dynamicSectionHeader->sizeInFile;
-            auto entrySize = output->dynamicSectionHeader->entrySize;
+        if (output->dynamicHeader != nullptr) {
+            ElfW(Dyn) dyn;
+            auto offset = output->dynamicHeader->offset;
+            auto size = output->dynamicHeader->sizeInFile;
+            auto entrySize = sizeof(dyn);
             auto count = size / entrySize;
             position = offset;
-            ElfW(Dyn) dyn;
             addr_t strOffset = -1;
             addr_t soNameOffset = -1;
             for (int i = 0; i < count; i ++) {
+                if (strOffset != -1 && soNameOffset != -1) {
+                    break;
+                }
                 memcpy(&dyn, buffer + position, sizeof(dyn));
                 position += sizeof(dyn);
                 switch (dyn.d_tag) {
@@ -216,6 +216,39 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
             }
             if (strOffset != -1 && soNameOffset != -1) {
                 readString(output->soName, reinterpret_cast<const char *>(buffer + strOffset), (uint32_t) soNameOffset);
+            }
+        }
+
+        // Build id
+        if (output->noteHeader != nullptr) {
+            ElfW(Nhdr) nhdr;
+            auto offset = output->noteHeader->offset;
+            auto size = output->noteHeader->sizeInFile;
+            auto headerSize = sizeof(nhdr);
+            position = offset;
+            unsigned int hasRead = 0;
+            while (hasRead < size) {
+                memcpy(&nhdr, buffer + position, headerSize);
+                hasRead += headerSize;
+                position = offset + hasRead;
+                const char *name = reinterpret_cast<const char *>(buffer + position);
+                auto nameLen = nhdr.n_namesz;
+                hasRead += (nameLen + 3) & ~3;
+                position = offset + hasRead;
+                if (nhdr.n_type == NT_GNU_BUILD_ID && strcmp(name, "GNU") == 0) {
+                    auto descLen = nhdr.n_descsz;
+                    int buildIdWriteIndex = 0;
+                    for (int i = 0; i < descLen; i ++) {
+                        if (buildIdWriteIndex >= (MAX_STR_SIZE - 2)) {
+                            break;
+                        }
+                        int s = sprintf(reinterpret_cast<char *>(output->buildId + buildIdWriteIndex), "%02x", (uint8_t) buffer[position + i]);
+                        buildIdWriteIndex += s;
+                    }
+                    break;
+                }
+                hasRead += (nhdr.n_descsz + 3) & ~3;
+                position = offset + hasRead;
             }
         }
 
@@ -267,6 +300,7 @@ void recycleElf(T_Elf *toRecycle) {
     toRecycle->gnuEhFrameHeader = nullptr;
     toRecycle->armExidxHeader = nullptr;
     toRecycle->dynamicHeader = nullptr;
+    toRecycle->noteHeader = nullptr;
     while (toRecycle->programHeaders.size > 0) {
         auto v = toRecycle->programHeaders.popFirst();
         free(v);
@@ -280,8 +314,6 @@ void recycleElf(T_Elf *toRecycle) {
     toRecycle->ehFrameHeader = nullptr;
     toRecycle->ehFrameHdrHeader = nullptr;
     toRecycle->gnuEhFrameHeader = nullptr;
-    toRecycle->dynamicSectionHeader = nullptr;
-    toRecycle->buildIdHeader = nullptr;
     while (toRecycle->sectionHeaders.size > 0) {
         auto v = toRecycle->sectionHeaders.popFirst();
         free(v);
