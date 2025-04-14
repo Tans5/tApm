@@ -93,43 +93,43 @@ static int handleCrash(CrashSignal *crashSignal) {
 
 
     findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap);
-//    if (crashedMemoryMap != nullptr) {
-//        if (tryLoadElf(crashedMemoryMap)) {
-//            auto crashedElf = crashedMemoryMap->elf;
-//            LOGD("Parse crash elf success.");
-//            auto elfHeader = crashedElf->elfHeader;
-//            LOGD("ELF Header: ");
-//            LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
-//                 elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize,
-//                 elfHeader.programHeaderNum);
-//            LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
-//                 elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize,
-//                 elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
-//
-//            LOGD("Program Headers: ");
-//            crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
-//                auto ph = static_cast<T_ProgramHeader *>(p);
-//                LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset,
-//                     ph->sizeInFile, ph->sizeInMemory);
-//                return true;
-//            });
-//            LOGD("Section Headers: ");
-//            crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
-//                auto sh = static_cast<T_SectionHeader *>(s);
-//                LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d",
-//                     sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link,
-//                     sh->info);
-//                return true;
-//            });
-//            auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
-//            char symbolName[256];
-//            addr_t symbolOffset;
-//            readAddressSymbol(crashedMemoryMap->elfFileMap->data, crashedElf, elfOffset, symbolName, &symbolOffset);
-//            LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
-//        } else {
-//            LOGE("Parse crash elf fail.");
-//        }
-//    }
+    if (crashedMemoryMap != nullptr) {
+        if (tryLoadElf(crashedMemoryMap)) {
+            auto crashedElf = crashedMemoryMap->elf;
+            LOGD("Parse crash elf success: %s", crashedElf->soName);
+            auto elfHeader = crashedElf->elfHeader;
+            LOGD("ELF Header: ");
+            LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
+                 elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize,
+                 elfHeader.programHeaderNum);
+            LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
+                 elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize,
+                 elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
+
+            LOGD("Program Headers: ");
+            crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
+                auto ph = static_cast<T_ProgramHeader *>(p);
+                LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset,
+                     ph->sizeInFile, ph->sizeInMemory);
+                return true;
+            });
+            LOGD("Section Headers: ");
+            crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
+                auto sh = static_cast<T_SectionHeader *>(s);
+                LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d",
+                     sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link,
+                     sh->info);
+                return true;
+            });
+            auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
+            char symbolName[256];
+            addr_t symbolOffset;
+            readAddressSymbol(crashedMemoryMap->elfFileMap->data, crashedElf, elfOffset, symbolName, &symbolOffset);
+            LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
+        } else {
+            LOGE("Parse crash elf fail.");
+        }
+    }
 //    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
 //        auto threadStatus = static_cast<ThreadStatus *>(s);
 //        if (threadStatus->isGetRegs) {

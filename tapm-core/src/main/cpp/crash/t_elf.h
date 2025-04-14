@@ -69,7 +69,10 @@ typedef struct T_Elf {
     T_SectionHeader *ehFrameHeader = nullptr;
     T_SectionHeader *ehFrameHdrHeader = nullptr;
     T_SectionHeader *gnuDebugDataHeader = nullptr;
+    T_SectionHeader *dynamicSectionHeader = nullptr;
+    T_SectionHeader *buildIdHeader = nullptr;
 
+    char soName[MAX_STR_SIZE]{};
 } T_Elf;
 
 int readString(char* dst, const char * src, uint32_t startIndex);

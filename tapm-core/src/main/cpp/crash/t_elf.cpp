@@ -48,6 +48,8 @@ const static char DEBUG_FRAME[]     = ".debug_frame";
 const static char EH_FRAME[]        = ".eh_frame";
 const static char EH_FRAME_HDR[]    = ".eh_frame_hdr";
 const static char GNU_DEBUGDATA[]   = ".gnu_debugdata";
+const static char DYNAMIC[]         = ".dynamic";
+const static char BUILD_ID[]        = ".note.gnu.build-id";
 
 
 bool parseElf(const uint8_t *buffer, T_Elf *output) {
@@ -145,8 +147,11 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
                 output->ehFrameHdrHeader = h;
             } else if (strncmp(h->name, GNU_DEBUGDATA, sizeof(GNU_DEBUGDATA)) == 0) {
                 output->gnuDebugDataHeader = h;
+            } else if (strncmp(h->name, DYNAMIC, sizeof(DYNAMIC)) == 0) {
+                output->dynamicSectionHeader = h;
+            } else if (strncmp(h->name, BUILD_ID, sizeof(BUILD_ID)) == 0) {
+                output->buildIdHeader = h;
             }
-
         }
 
         // Check symtab link.
@@ -180,6 +185,37 @@ bool parseElf(const uint8_t *buffer, T_Elf *output) {
                     break;
                 }
                 iterator.next();
+            }
+        }
+
+        // So name
+        if (output->dynamicSectionHeader != nullptr) {
+            auto offset = output->dynamicSectionHeader->offset;
+            auto size = output->dynamicSectionHeader->sizeInFile;
+            auto entrySize = output->dynamicSectionHeader->entrySize;
+            auto count = size / entrySize;
+            position = offset;
+            ElfW(Dyn) dyn;
+            addr_t strOffset = -1;
+            addr_t soNameOffset = -1;
+            for (int i = 0; i < count; i ++) {
+                memcpy(&dyn, buffer + position, sizeof(dyn));
+                position += sizeof(dyn);
+                switch (dyn.d_tag) {
+                    case DT_SONAME: {
+                        soNameOffset = dyn.d_un.d_val;
+                        break;
+                    }
+                    case DT_STRTAB: {
+                        strOffset = dyn.d_un.d_val;
+                        break;
+                    }
+                    default: {
+                    }
+                }
+            }
+            if (strOffset != -1 && soNameOffset != -1) {
+                readString(output->soName, reinterpret_cast<const char *>(buffer + strOffset), (uint32_t) soNameOffset);
             }
         }
 
@@ -244,6 +280,8 @@ void recycleElf(T_Elf *toRecycle) {
     toRecycle->ehFrameHeader = nullptr;
     toRecycle->ehFrameHdrHeader = nullptr;
     toRecycle->gnuEhFrameHeader = nullptr;
+    toRecycle->dynamicSectionHeader = nullptr;
+    toRecycle->buildIdHeader = nullptr;
     while (toRecycle->sectionHeaders.size > 0) {
         auto v = toRecycle->sectionHeaders.popFirst();
         free(v);
