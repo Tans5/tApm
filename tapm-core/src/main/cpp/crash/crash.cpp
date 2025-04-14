@@ -33,7 +33,6 @@ static void init() {
 }
 static volatile bool isCrashed = false;
 
-
 static volatile Crash * workingMonitor = nullptr;
 
 static int handleCrash(CrashSignal *crashSignal) {
@@ -319,6 +318,28 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
         if (ret == 0) {
             handleCrashOnNewProcess(&crashSignal);
             pthread_mutex_unlock(&lock);
+        }
+    }
+
+    if (monitor != nullptr) {
+        OldCrashSignalAction * oldAction = nullptr;
+        Iterator i;
+        monitor->oldCrashSignalActions->iterator(&i);
+        while (i.containValue()) {
+            auto a = static_cast<OldCrashSignalAction *>(i.value());
+            if (a->signal == sig) {
+                oldAction = a;
+                break;
+            }
+            i.next();
+        }
+        if (oldAction != nullptr && oldAction->action.sa_flags & SA_SIGINFO) {
+            oldAction->action.sa_sigaction(sig, sig_info, uc);
+        } else if (oldAction != nullptr && oldAction->action.sa_handler != SIG_DFL && oldAction->action.sa_handler != SIG_IGN) {
+            oldAction->action.sa_handler(sig);
+        } else {
+            signal(sig, SIG_DFL);
+            kill(getpid(), sig);
         }
     }
 }
