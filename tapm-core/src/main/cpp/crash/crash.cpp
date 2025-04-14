@@ -158,7 +158,15 @@ static int handleCrash(CrashSignal *crashSignal) {
         unwindFramesLocal(threadStatus, memoryMaps, &frames, 64);
         frames.forEach(nullptr, [](void *f, void*) {
             auto frame = static_cast<Frame *>(f);
-            LOGD("PC=0x%llx, SP=0x%llx, ElfPath=%s, PC_ELF=0x%llx, Symbol=%s, OffsetInSymbol=%d", frame->pc, frame->sp, frame->elfPath, frame->offsetInElf, frame->symbol, frame->offsetInSymbol);
+            char *elfPath = "";
+            if (frame->mapped != nullptr) {
+                elfPath = frame->mapped->pathname;
+            }
+            char *soName = "";
+            if (frame->mapped != nullptr && frame->mapped->elf != nullptr) {
+                soName = frame->mapped->elf->soName;
+            }
+            LOGD("PC=0x%llx, SP=0x%llx, ElfPath=%s, SoName=%s, PC_ELF=0x%llx, Symbol=%s, OffsetInSymbol=%d", frame->pc, frame->sp, elfPath, soName, frame->offsetInElf, frame->symbol, frame->offsetInSymbol);
             return true;
         });
         recycleFrames(&frames);

@@ -124,13 +124,15 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
     outputFrames->iterator(&i);
     while(i.containValue()) {
         auto f = static_cast<Frame *>(i.value());
-        loadElfSymbol(f->pc, memoryMaps, f->elfPath, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
+        f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
         i.next();
     }
-    memoryMaps->iterator(&i);
+    outputFrames->iterator(&i);
     while (i.containValue()) {
-        auto m = static_cast<MemoryMap *>(i.value());
-        recycleElfFileMap(m);
+        auto m = static_cast<Frame *>(i.value())->mapped;
+        if (m != nullptr) {
+            recycleElfFileMap(m);
+        }
         i.next();
     }
 
@@ -146,7 +148,7 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
     }
 
     unw_cursor_t cursor; unw_context_t uc;
-    unw_word_t ip, sp, offset;
+    unw_word_t ip, sp;
 
     auto regs = targetThread->regs;
     unw_getcontext(&uc);
@@ -195,13 +197,15 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
     outputFrames->iterator(&i);
     while(i.containValue()) {
         auto f = static_cast<Frame *>(i.value());
-        loadElfSymbol(f->pc, memoryMaps, f->elfPath, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
+        f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
         i.next();
     }
-    memoryMaps->iterator(&i);
+    outputFrames->iterator(&i);
     while (i.containValue()) {
-        auto m = static_cast<MemoryMap *>(i.value());
-        recycleElfFileMap(m);
+        auto m = static_cast<Frame *>(i.value())->mapped;
+        if (m != nullptr) {
+            recycleElfFileMap(m);
+        }
         i.next();
     }
 

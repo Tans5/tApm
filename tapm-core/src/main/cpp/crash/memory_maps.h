@@ -56,7 +56,7 @@ bool tryLoadElf(MemoryMap *memoryMap);
 
 addr_t convertAddressToElfOffset(MemoryMap *memoryMap, addr_t address);
 
-bool loadElfSymbol(addr_t address, LinkedList *maps, char *outputElfPath, addr_t *outputElfOffset, char *outputSymbol, addr_t *outputSymbolOffset) ;
+bool loadElfSymbol(addr_t address, LinkedList *maps, MemoryMap **outputMap, addr_t *outputElfOffset, char *outputSymbol, addr_t *outputSymbolOffset) ;
 
 void recycleElfFileMap(MemoryMap *memoryMap);
 

@@ -13,11 +13,13 @@
 #include "../tapm_size.h"
 
 typedef struct Frame {
+    uint32_t index = 0;
     addr_t pc = 0;
     addr_t sp = 0;
     addr_t offsetInElf = 0;
     addr_t offsetInSymbol = 0;
-    char elfPath[MAX_STR_SIZE]{};
+    MemoryMap * mapped = nullptr;
+    bool isLoadSymbol = false;
     char symbol[MAX_STR_SIZE]{};
 } Frame;
 
