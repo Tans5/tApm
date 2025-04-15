@@ -27,6 +27,8 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
 
 bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);
 
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);
+
 void recycleFrames(LinkedList *toRecycle);
 
 #endif //TAPM_T_UNWIND_H

@@ -215,6 +215,62 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
     return true;
 }
 
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize) {
+    if (maxFrameSize <= 0 || !targetThread->isGetRegs) {
+        return false;
+    }
+    unwindstack::Regs *regs = nullptr;
+    if (targetThread->crashSignalCtx != nullptr) {
+#if defined(__aarch64__)
+        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86_64, targetThread->crashSignalCtx);
+#elif defined(__arm__)
+        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_ARM, targetThread->crashSignalCtx);
+#elif defined(__x86_64__)
+        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86_64, targetThread->crashSignalCtx);
+#elif defined(__i386__)
+        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86, targetThread->crashSignalCtx);
+#endif
+    } else {
+        regs = unwindstack::Regs::RemoteGet(targetThread->thread->tid);
+    }
+    if (regs != nullptr) {
+        unwindstack::AndroidRemoteUnwinder unwinder(targetThread->thread->tid);
+        unwindstack::AndroidUnwinderData unwinderData;
+        auto ret = unwinder.Unwind(regs, unwinderData);
+        if (ret) {
+            for (const auto& f : unwinderData.frames) {
+                auto mf = new Frame;
+                mf->pc = f.pc;
+                mf->sp = f.sp;
+                mf->index = outputFrames->size;
+                outputFrames->addToLast(mf);
+            }
+            Iterator i;
+            outputFrames->iterator(&i);
+            while(i.containValue()) {
+                auto f = static_cast<Frame *>(i.value());
+                f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
+                i.next();
+            }
+            outputFrames->iterator(&i);
+            while (i.containValue()) {
+                auto m = static_cast<Frame *>(i.value())->mapped;
+                if (m != nullptr) {
+                    recycleElfFileMap(m);
+                }
+                i.next();
+            }
+        } else {
+            LOGE("Unwind fail.");
+        }
+        return ret;
+    } else {
+        LOGE("Create regs fail.");
+        return false;
+    }
+
+}
+
 void recycleFrames(LinkedList *toRecycle) {
     while (toRecycle->size > 0) {
         auto v = reinterpret_cast<Frame *>(toRecycle->popFirst());

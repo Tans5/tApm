@@ -24,6 +24,7 @@ android {
                     keepDebugSymbols += listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so")
                 }
             }
+            isDebuggable = false
         }
         release {
             isMinifyEnabled = false

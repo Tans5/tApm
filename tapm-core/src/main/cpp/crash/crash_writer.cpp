@@ -337,7 +337,7 @@ int writeCrash(
      * Write crash thread. backtrace
      */
     LinkedList frames;
-    unwindFramesLocal(crashedThreadStatus, memoryMaps, &frames, 64);
+    unwindFramesByUnwindStack(crashedThreadStatus, memoryMaps, &frames, 64);
     writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
     recycleFrames(&frames);
     flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
