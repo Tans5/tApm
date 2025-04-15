@@ -20,6 +20,7 @@ int writeCrash(
         pid_t crashTid,
         uid_t crashUid,
         char *crashFilePath,
+        LinkedList *memoryMaps,
         LinkedList *threadsStatus,
         ThreadStatus *crashedThreadStatus
 );

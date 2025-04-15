@@ -189,6 +189,7 @@ static int handleCrash(CrashSignal *crashSignal) {
             crashSignal->crashTid,
             crashSignal->crashUid,
             crashSignal->crashFilePath,
+            &memoryMaps,
             &crashedProcessThreadsStatus,
             crashedThreadStatus);
 

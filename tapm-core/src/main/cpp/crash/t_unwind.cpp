@@ -118,6 +118,7 @@ bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, Li
         auto f = new Frame;
         f->pc = ip;
         f->sp = sp;
+        f->index = outputFrames->size;
         outputFrames->addToLast(f);
     } while(outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
 
@@ -189,7 +190,7 @@ bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, Linke
         auto f = new Frame;
         f->pc = ip;
         f->sp = sp;
-
+        f->index = outputFrames->size;
         outputFrames->addToLast(f);
     } while (outputFrames->size <= maxFrameSize && unw_step(&cursor) > 0);
 
