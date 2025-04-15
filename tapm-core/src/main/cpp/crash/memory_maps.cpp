@@ -284,8 +284,7 @@ bool loadElfSymbol(addr_t address,
     *outputElfOffset = elfOffset;
     if (tryLoadElf(memoryMap)) {
         if (memoryMap->elfFileMap != nullptr || tryLoadElfFileMmap(memoryMap)) {
-            readAddressSymbol(memoryMap->elfFileMap->data, memoryMap->elf, elfOffset, outputSymbol, outputSymbolOffset);
-            return true;
+            return readAddressSymbol(memoryMap->elfFileMap->data, memoryMap->elf, elfOffset, outputSymbol, outputSymbolOffset);
         }
     }
     return false;

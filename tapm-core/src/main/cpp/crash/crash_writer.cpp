@@ -13,6 +13,7 @@
 #include "../time/tapm_time.h"
 #include "../thread/tapm_thread.h"
 #include "process_read.h"
+#include "t_unwind.h"
 
 #define CRASH_START_LINE "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
 #define THREAD_START_LINE "--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---"
@@ -148,6 +149,12 @@ bool hasFaultAddress(const siginfo_t *si) {
             return false;
     }
 }
+
+void flushBuffer(int fd, char *buffer, int *bufferPosition) {
+    write(fd, buffer, *bufferPosition);
+    *bufferPosition = 0;
+}
+
 void writeRegs(regs_t *regs, char *buffer, int *bufferPosition) {
 #if defined(__aarch64__)
     auto size = sprintf(buffer + *bufferPosition, "    x0  %016lx  x1  %016lx  x2  %016lx  x3  %016lx\n    x4  %016lx  x5  %016lx  x6  %016lx  x7  %016lx\n    x8  %016lx  x9  %016lx  x10 %016lx  x11 %016lx\n    x12 %016lx  x13 %016lx  x14 %016lx  x15 %016lx\n    x16 %016lx  x17 %016lx  x18 %016lx  x19 %016lx\n    x20 %016lx  x21 %016lx  x22 %016lx  x23 %016lx\n    x24 %016lx  x25 %016lx  x26 %016lx  x27 %016lx\n    x28 %016lx  x29 %016lx\n    lr  %016lx  sp  %016lx  pc  %016lx  pst  %016lx\n\n",
@@ -183,6 +190,52 @@ void writeRegs(regs_t *regs, char *buffer, int *bufferPosition) {
                         regs->ebp, regs->esp, regs->eip);
     *bufferPosition = *bufferPosition + size;
 #endif
+}
+
+void writeFrames(LinkedList *frames, int fd, char *buffer, int *bufferPosition) {
+    auto s = sprintf(buffer + *bufferPosition, "%d total frames\nbacktrace:\n", frames->size);
+    *bufferPosition = *bufferPosition + s;
+    Iterator i;
+    frames->iterator(&i);
+    while (i.containValue()) {
+        if (*bufferPosition >= (WRITER_BUFFER_SIZE / 2)) {
+            flushBuffer(fd, buffer, bufferPosition);
+        }
+        auto f = static_cast<Frame *>(i.value());
+        if (f->mapped != nullptr) {
+            // pc
+            s = sprintf(buffer + *bufferPosition, "      #%02zu pc %016lx", f->index, f->offsetInElf);
+            *bufferPosition = *bufferPosition + s;
+            // path name
+            if (f->mapped->pathname[0] != '\0') {
+                s = sprintf(buffer + *bufferPosition, "  %s", f->mapped->pathname);
+                *bufferPosition = *bufferPosition + s;
+            } else {
+                s = sprintf(buffer + *bufferPosition, "  <anonymous: 0x%016lx>", f->mapped->startAddr);
+                *bufferPosition = *bufferPosition + s;
+            }
+            if (f->mapped->elf != nullptr) {
+                if (f->mapped->elfFileStart > 0) {
+                    s = sprintf(buffer + *bufferPosition, "!%s (offset 0x%lx)", f->mapped->elf->soName, f->mapped->elfFileStart);
+                    *bufferPosition = *bufferPosition + s;
+                }
+                if (f->isLoadSymbol) {
+                    s = sprintf(buffer + *bufferPosition, " (%s+%d)", f->symbol, f->offsetInSymbol);
+                    *bufferPosition = *bufferPosition + s;
+                }
+                if (f->mapped->elf->buildId[0] != '\0') {
+                    s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->mapped->elf->buildId);
+                    *bufferPosition = *bufferPosition + s;
+                }
+            }
+            s = sprintf(buffer + *bufferPosition, "\n");
+            *bufferPosition = *bufferPosition + s;
+        } else {
+            s = sprintf(buffer + *bufferPosition, "      #%02zu pc %016lx  <unknown>\n", f->index, f->pc);
+            *bufferPosition = *bufferPosition + s;
+        }
+        i.next();
+    }
 }
 
 int writeCrash(
@@ -246,8 +299,7 @@ int writeCrash(
     bufferPosition += sprintf(writerBuffer + bufferPosition, "pid: %d, tid: %d, name: %s  >>> %s <<<\n", crashPid, crashTid, crashedThreadStatus->thread->threadName, strBuffer);
     // uid
     bufferPosition += sprintf(writerBuffer + bufferPosition, "uid: %d\n", crashUid);
-    write(crashFileFd, writerBuffer, bufferPosition);
-    bufferPosition = 0;
+    flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
 
     /**
      * Write crash regs
@@ -279,12 +331,16 @@ int writeCrash(
     }
     // regs
     writeRegs(&crashedThreadStatus->regs, writerBuffer, &bufferPosition);
-    write(crashFileFd, writerBuffer, bufferPosition);
-    bufferPosition = 0;
+    flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
 
     /**
      * Write crash thread. backtrace
      */
+    LinkedList frames;
+    unwindFramesLocal(crashedThreadStatus, memoryMaps, &frames, 64);
+    writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
+    recycleFrames(&frames);
+    flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
     // TODO:
 
     /**
