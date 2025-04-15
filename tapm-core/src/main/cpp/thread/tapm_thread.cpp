@@ -126,6 +126,18 @@ int findThreadByTid(pid_t pid, pid_t tid, tApmThread * output) {
     }
 }
 
+int getCmdline(pid_t pid, char *output) {
+    sprintf(output, "/proc/%d/cmdline", pid);
+    auto fd = open(output, O_RDONLY);
+    if (fd > 0) {
+        read(fd, output, MAX_STR_SIZE);
+        close(fd);
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
 void recycleProcessThreads(LinkedList *toRelease) {
     while (toRelease->size > 0) {
         auto t = static_cast<tApmThread *>(toRelease->popFirst());

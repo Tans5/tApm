@@ -103,6 +103,8 @@ add_library(
         crash/t_unwind.cpp
         crash/crash.h
         crash/crash.cpp
+        crash/crash_writer.cpp
+        crash/crash_writer.h
 )
 target_include_directories(tapm PRIVATE
         xhook

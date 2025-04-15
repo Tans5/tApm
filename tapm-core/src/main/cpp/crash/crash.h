@@ -28,9 +28,11 @@ typedef struct CrashSignal {
     int sig = 0;
     siginfo_t sigInfo {};
     ucontext_t userContext{};
+    int64_t startTime = 0;
     int64_t crashTime = 0;
     pid_t crashPid = 0;
     pid_t crashTid = 0;
+    uid_t crashUid = 0;
     char crashFilePath[2 * MAX_STR_SIZE]{};
 } CrashSignal;
 

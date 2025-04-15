@@ -22,6 +22,7 @@
 #include "t_elf.h"
 #include "memory_maps.h"
 #include "t_unwind.h"
+#include "crash_writer.h"
 
 static pthread_mutex_t lock;
 static volatile bool isInited = false;
@@ -37,12 +38,10 @@ static volatile Crash * workingMonitor = nullptr;
 
 static int handleCrash(CrashSignal *crashSignal) {
     int ret = 0;
-    int crashFileFd = -1;
     LinkedList crashedProcessThreads;
     LinkedList crashedProcessThreadsStatus;
     ThreadStatus *crashedThreadStatus = nullptr;
     LinkedList memoryMaps;
-    MemoryMap *crashedMemoryMap = nullptr;
 
     // Get all threads
     getProcessThreads(crashSignal->crashPid, &crashedProcessThreads);
@@ -73,62 +72,62 @@ static int handleCrash(CrashSignal *crashSignal) {
 
     // Read all threads register value.
     readThreadsRegs(&crashedProcessThreadsStatus, crashSignal->crashTid, &crashSignal->userContext);
-    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *ts, void *memoryMaps) -> bool {
-        auto *threadStatus = static_cast<ThreadStatus *>(ts);
-        if (threadStatus->isGetRegs) {
-            MemoryMap * map = nullptr;
-            findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map);
-            char *mapPath = "";
-            if (map != nullptr) {
-                mapPath = map->pathname;
-            }
-            LOGD("Thread=%s, Tid=%d, PC=0x%lx, SP=0x%lx, FP=0x%lx MapPath=%s", threadStatus->thread->threadName,
-                 threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, threadStatus->fp, mapPath);
-        } else {
-            LOGD("Thread %s don't get regs", threadStatus->thread->threadName);
-        }
-        return true;
-    });
+//    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *ts, void *memoryMaps) -> bool {
+//        auto *threadStatus = static_cast<ThreadStatus *>(ts);
+//        if (threadStatus->isGetRegs) {
+//            MemoryMap * map = nullptr;
+//            findMemoryMapByAddress(threadStatus->pc, static_cast<LinkedList *>(memoryMaps), &map);
+//            char *mapPath = "";
+//            if (map != nullptr) {
+//                mapPath = map->pathname;
+//            }
+//            LOGD("Thread=%s, Tid=%d, PC=0x%lx, SP=0x%lx, FP=0x%lx MapPath=%s", threadStatus->thread->threadName,
+//                 threadStatus->thread->tid, threadStatus->pc, threadStatus->sp, threadStatus->fp, mapPath);
+//        } else {
+//            LOGD("Thread %s don't get regs", threadStatus->thread->threadName);
+//        }
+//        return true;
+//    });
 
 
-    findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap);
-    if (crashedMemoryMap != nullptr) {
-        if (tryLoadElf(crashedMemoryMap)) {
-            auto crashedElf = crashedMemoryMap->elf;
-            LOGD("Parse crash elf success: %s (%s)", crashedElf->soName, crashedElf->buildId);
-            auto elfHeader = crashedElf->elfHeader;
-            LOGD("ELF Header: ");
-            LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
-                 elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize,
-                 elfHeader.programHeaderNum);
-            LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
-                 elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize,
-                 elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
-
-            LOGD("Program Headers: ");
-            crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
-                auto ph = static_cast<T_ProgramHeader *>(p);
-                LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset,
-                     ph->sizeInFile, ph->sizeInMemory);
-                return true;
-            });
-            LOGD("Section Headers: ");
-            crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
-                auto sh = static_cast<T_SectionHeader *>(s);
-                LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d",
-                     sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link,
-                     sh->info);
-                return true;
-            });
-            auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
-            char symbolName[256];
-            addr_t symbolOffset;
-            readAddressSymbol(crashedMemoryMap->elfFileMap->data, crashedElf, elfOffset, symbolName, &symbolOffset);
-            LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
-        } else {
-            LOGE("Parse crash elf fail.");
-        }
-    }
+//    findMemoryMapByAddress(crashedThreadStatus->pc, &memoryMaps, &crashedMemoryMap);
+//    if (crashedMemoryMap != nullptr) {
+//        if (tryLoadElf(crashedMemoryMap)) {
+//            auto crashedElf = crashedMemoryMap->elf;
+//            LOGD("Parse crash elf success: %s (%s)", crashedElf->soName, crashedElf->buildId);
+//            auto elfHeader = crashedElf->elfHeader;
+//            LOGD("ELF Header: ");
+//            LOGD("ProgramHeaderOffset=0x%x, ProgramHeaderEntrySize=%d, ProgramHeaderNum=%d",
+//                 elfHeader.programHeaderOffset, elfHeader.programHeaderEntrySize,
+//                 elfHeader.programHeaderNum);
+//            LOGD("SectionHeaderOffset=0x%x, SectionHeaderEntrySize=%d, SectionHeaderNum=%d, SectionNameStrIndex=%d",
+//                 elfHeader.sectionHeaderOffset, elfHeader.sectionHeaderEntrySize,
+//                 elfHeader.sectionHeaderNum, elfHeader.sectionNameStrIndex);
+//
+//            LOGD("Program Headers: ");
+//            crashedElf->programHeaders.forEach(nullptr, [](void *p, void *) {
+//                auto ph = static_cast<T_ProgramHeader *>(p);
+//                LOGD("Type=%d, Start=0x%x, SizeInFile=%d, SizeInMemory=%d", ph->type, ph->offset,
+//                     ph->sizeInFile, ph->sizeInMemory);
+//                return true;
+//            });
+//            LOGD("Section Headers: ");
+//            crashedElf->sectionHeaders.forEach(nullptr, [](void *s, void *) {
+//                auto sh = static_cast<T_SectionHeader *>(s);
+//                LOGD("Name=%s, Offset=0x%x, SizeInFile=%d, EntrySize=%d, Index=%d, Link=%d, Info=%d",
+//                     sh->name, sh->offset, sh->sizeInFile, sh->entrySize, sh->index, sh->link,
+//                     sh->info);
+//                return true;
+//            });
+//            auto elfOffset = convertAddressToElfOffset(crashedMemoryMap, crashedThreadStatus->pc);
+//            char symbolName[256];
+//            addr_t symbolOffset;
+//            readAddressSymbol(crashedMemoryMap->elfFileMap->data, crashedElf, elfOffset, symbolName, &symbolOffset);
+//            LOGD("CrashedSymbolName=%s, Offset=0x%llx", symbolName, symbolOffset);
+//        } else {
+//            LOGE("Parse crash elf fail.");
+//        }
+//    }
 //    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
 //        auto threadStatus = static_cast<ThreadStatus *>(s);
 //        if (threadStatus->isGetRegs) {
@@ -150,50 +149,50 @@ static int handleCrash(CrashSignal *crashSignal) {
 //        return true;
 //    });
 
-    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
-        auto threadStatus = static_cast<ThreadStatus *>(s);
-        auto *memoryMaps = static_cast<LinkedList *>(m);
-        LinkedList frames;
-        LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
-        unwindFramesLocal(threadStatus, memoryMaps, &frames, 64);
-        frames.forEach(nullptr, [](void *f, void*) {
-            auto frame = static_cast<Frame *>(f);
-            char *elfPath = "";
-            if (frame->mapped != nullptr) {
-                elfPath = frame->mapped->pathname;
-            }
-            char *soName = "";
-            if (frame->mapped != nullptr && frame->mapped->elf != nullptr) {
-                soName = frame->mapped->elf->soName;
-            }
-            LOGD("PC=0x%llx, SP=0x%llx, ElfPath=%s, SoName=%s, PC_ELF=0x%llx, Symbol=%s, OffsetInSymbol=%d", frame->pc, frame->sp, elfPath, soName, frame->offsetInElf, frame->symbol, frame->offsetInSymbol);
-            return true;
-        });
-        recycleFrames(&frames);
-        return true;
-    });
+//    crashedProcessThreadsStatus.forEach(&memoryMaps, [](void *s, void *m) {
+//        auto threadStatus = static_cast<ThreadStatus *>(s);
+//        auto *memoryMaps = static_cast<LinkedList *>(m);
+//        LinkedList frames;
+//        LOGD("Thread=%s, InitPC=0x%llx", threadStatus->thread->threadName, threadStatus->pc);
+//        unwindFramesLocal(threadStatus, memoryMaps, &frames, 64);
+//        frames.forEach(nullptr, [](void *f, void*) {
+//            auto frame = static_cast<Frame *>(f);
+//            char *elfPath = "";
+//            if (frame->mapped != nullptr) {
+//                elfPath = frame->mapped->pathname;
+//            }
+//            char *soName = "";
+//            if (frame->mapped != nullptr && frame->mapped->elf != nullptr) {
+//                soName = frame->mapped->elf->soName;
+//            }
+//            LOGD("PC=0x%llx, SP=0x%llx, ElfPath=%s, SoName=%s, PC_ELF=0x%llx, Symbol=%s, OffsetInSymbol=%d", frame->pc, frame->sp, elfPath, soName, frame->offsetInElf, frame->symbol, frame->offsetInSymbol);
+//            return true;
+//        });
+//        recycleFrames(&frames);
+//        return true;
+//    });
 
 
-    char abortMsg[MAX_STR_SIZE];
-    if (tryFindAbortMsg(crashSignal->crashPid, &memoryMaps, abortMsg)) {
-        std::string s(abortMsg);
-        LOGD("Found abort msg: %s", s.c_str());
-    }
+//    char abortMsg[MAX_STR_SIZE];
+//    if (tryFindAbortMsg(crashSignal->crashPid, &memoryMaps, abortMsg)) {
+//        std::string s(abortMsg);
+//        LOGD("Found abort msg: %s", s.c_str());
+//    }
 
-    crashFileFd = open(crashSignal->crashFilePath, O_CREAT | O_RDWR, 0666);
-    if (crashFileFd == -1) {
-        LOGE("Create crash file fail");
-        ret = -1;
-        goto  End;
-    }
-
-    // TODO:
-
+    ret = writeCrash(
+            crashSignal->sig,
+            &crashSignal->sigInfo,
+            &crashSignal->userContext,
+            crashSignal->startTime,
+            crashSignal->crashTime,
+            crashSignal->crashPid,
+            crashSignal->crashTid,
+            crashSignal->crashUid,
+            crashSignal->crashFilePath,
+            &crashedProcessThreadsStatus,
+            crashedThreadStatus);
 
     End:
-    if (crashFileFd != -1) {
-        close(crashFileFd);
-    }
     resumeThreads(&crashedProcessThreadsStatus);
     recycleProcessThreads(&crashedProcessThreads);
     recycleThreadsStatus(&crashedProcessThreadsStatus);
@@ -313,9 +312,11 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
         isCrashed = true;
         CrashSignal crashSignal {
             .sig = sig,
+            .startTime = monitor->startTime,
             .crashTime = nowInMillis(),
             .crashPid = getpid(),
             .crashTid = gettid(),
+            .crashUid = getuid()
         };
         memcpy(&crashSignal.sigInfo, sig_info, sizeof(siginfo_t));
         memcpy(&crashSignal.userContext, uc, sizeof(crashSignal.userContext));
