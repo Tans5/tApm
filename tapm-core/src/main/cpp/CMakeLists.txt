@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project("tapm")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
+
+add_subdirectory(unwindstack)
+
 # region xhook
 add_library(xhook SHARED
         xhook/queue.h
@@ -109,6 +114,7 @@ add_library(
 target_include_directories(tapm PRIVATE
         xhook
         unwind
+        unwindstack/libunwindstack/include
 )
 
 target_link_libraries(
@@ -117,6 +123,7 @@ target_link_libraries(
         android
         log
         z
+        unwindstack
 
         libunwind
         libunwind-ptrace

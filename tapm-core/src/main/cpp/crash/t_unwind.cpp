@@ -6,6 +6,8 @@
 #include "libunwind-ptrace.h"
 #include "../tapm_log.h"
 #include "t_regs.h"
+#include "unwindstack/AndroidUnwinder.h"
+#include "unwindstack/Regs.h"
 
 void copyRegs(unw_context_t *target, regs_t *src) {
 #if defined(__aarch64__)
