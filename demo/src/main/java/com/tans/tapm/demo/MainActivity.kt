@@ -1,6 +1,7 @@
 package com.tans.tapm.demo
 
 import android.view.View
+import com.tans.tapm.breakpad.BreakpadNativeCrashMonitor
 import com.tans.tapm.demo.databinding.MainActivityBinding
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor

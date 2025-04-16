@@ -3,6 +3,7 @@ package com.tans.tapm.demo
 import android.app.Application
 import com.tans.tapm.InitCallback
 import com.tans.tapm.Monitor
+import com.tans.tapm.breakpad.BreakpadNativeCrashMonitor
 import com.tans.tapm.formatDataTime
 import com.tans.tapm.model.Anr
 import com.tans.tapm.model.CpuPowerCost
@@ -14,6 +15,7 @@ import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
+import com.tans.tapm.monitors.NativeCrashMonitor
 import com.tans.tapm.tApm
 import com.tans.tapm.toHumanReadablePercent
 import com.tans.tlrucache.disk.DiskLruCache
@@ -77,7 +79,8 @@ class App : Application() {
                     AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTime()}, isSigFromMe: ${t.isSigFromMe}, anrTraceFile=${t.anrTraceFile}")
                 }
             })
-            // .addMonitor(BreakpadNativeCrashMonitor())
+//            .removeMonitor(NativeCrashMonitor::class.java)
+//            .addMonitor(BreakpadNativeCrashMonitor())
             .setInitCallback(object : InitCallback {
                 val TAG = "ApmInit"
 

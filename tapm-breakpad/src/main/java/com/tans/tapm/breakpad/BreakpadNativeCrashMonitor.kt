@@ -48,6 +48,11 @@ class BreakpadNativeCrashMonitor : AbsMonitor<BreakpadNativeCrash>(Long.MAX_VALU
         }
     }
 
+    fun onNativeCrash(crashFile: String) {
+        Log.d(TAG, "Native crash file: $crashFile")
+        dispatchMonitorData(BreakpadNativeCrash(time = System.currentTimeMillis(), crashFilePath = crashFile))
+    }
+
     external fun testNativeCrash()
 
     private external fun registerNativeCrashMonitorNative(crashFileDir: String): Long
