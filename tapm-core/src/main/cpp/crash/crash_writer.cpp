@@ -214,16 +214,19 @@ void writeFrames(LinkedList *frames, int fd, char *buffer, int *bufferPosition) 
                 s = sprintf(buffer + *bufferPosition, "  <anonymous: %lx>", f->mapStartAddr);
                 *bufferPosition = *bufferPosition + s;
             }
+            // so name
             if (f->elfFileStart > 0) {
                 if (f->elfFileStart > 0) {
                     s = sprintf(buffer + *bufferPosition, "!%s (offset 0x%lx)", f->soName, f->elfFileStart);
                     *bufferPosition = *bufferPosition + s;
                 }
             }
+            // symbol
             if (f->isLoadSymbol) {
                 s = sprintf(buffer + *bufferPosition, " (%s+%d)", f->symbol, f->offsetInSymbol);
                 *bufferPosition = *bufferPosition + s;
             }
+            // build id
             if (f->elfBuildId[0] != '\0') {
                 s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->elfBuildId);
                 *bufferPosition = *bufferPosition + s;
@@ -258,8 +261,12 @@ int writeCrash(
         return -1;
     }
     char *writerBuffer = static_cast<char *>(malloc(WRITER_BUFFER_SIZE));
-    char strBuffer[MAX_STR_SIZE];
+    char strBuffer[MAX_STR_SIZE], cmdline[MAX_STR_SIZE];
+    if (getCmdline(crashPid, cmdline) != 0) {
+        strncpy(strBuffer, "unknown", MAX_STR_SIZE);
+    }
     int bufferPosition = 0;
+
 
     /**
      * Write header.
@@ -291,12 +298,9 @@ int writeCrash(
         bufferPosition += sprintf(writerBuffer + bufferPosition, "Process uptime: %.1lf%c\n", uptimeInSeconds, 's');
     }
     // Cmdline
-    if (getCmdline(crashPid, strBuffer) != 0) {
-        strncpy(strBuffer, "unknown", MAX_STR_SIZE);
-    }
-    bufferPosition += sprintf(writerBuffer + bufferPosition, "Cmdline: %s\n", strBuffer);
+    bufferPosition += sprintf(writerBuffer + bufferPosition, "Cmdline: %s\n", cmdline);
     // pid/tid/crashThread
-    bufferPosition += sprintf(writerBuffer + bufferPosition, "pid: %d, tid: %d, name: %s  >>> %s <<<\n", crashPid, crashTid, crashedThreadStatus->thread->threadName, strBuffer);
+    bufferPosition += sprintf(writerBuffer + bufferPosition, "pid: %d, tid: %d, name: %s  >>> %s <<<\n", crashPid, crashTid, crashedThreadStatus->thread->threadName, cmdline);
     // uid
     bufferPosition += sprintf(writerBuffer + bufferPosition, "uid: %d\n", crashUid);
     flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
@@ -341,12 +345,29 @@ int writeCrash(
     writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
     recycleFrames(&frames);
     flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
-    // TODO:
 
     /**
      * Write other threads.
      */
-    // TODO:
+    Iterator i;
+    threadsStatus->iterator(&i);
+    while(i.containValue()) {
+        auto ts = reinterpret_cast<ThreadStatus *>(i.value());
+        if (ts->thread->tid != crashedThreadStatus->thread->tid) {
+            bufferPosition += sprintf(writerBuffer + bufferPosition, "%s\n", THREAD_START_LINE);
+            bufferPosition += sprintf(writerBuffer + bufferPosition, "Cmdline: %s\n", cmdline);
+            bufferPosition += sprintf(writerBuffer + bufferPosition, "pid: %d, tid: %d, name: %s  >>> %s <<<\n", crashPid, ts->thread->tid, ts->thread->threadName, cmdline);
+            bufferPosition += sprintf(writerBuffer + bufferPosition, "uid: %d\n", crashUid);
+            writeRegs(&ts->regs, writerBuffer, &bufferPosition);
+            flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
+            unwindFramesByUnwindStack(ts, crashPid, &frames, 64);
+            writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
+            recycleFrames(&frames);
+            flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
+        }
+        i.next();
+    }
+
     free(writerBuffer);
     close(crashFileFd);
     return 0;

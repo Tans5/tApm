@@ -31,7 +31,7 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
         return false;
     }
     unwindstack::Regs *regs = nullptr;
-    unwindstack::ArchEnum arch = unwindstack::ARCH_ARM64;
+    unwindstack::ArchEnum arch;
     void * regsBuffer = nullptr;
 #if defined(__aarch64__)
     arch = unwindstack::ARCH_ARM64;
@@ -44,7 +44,7 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
 #endif
     if (targetThread->crashSignalCtx != nullptr) {
         regs = unwindstack::Regs::CreateFromUcontext(arch, targetThread->crashSignalCtx);
-    } else if (targetThread->isGetRegs) {
+    } else {
         auto maxRegsSize = std::max(sizeof(unwindstack::arm_user_regs),
                 std::max(sizeof(unwindstack::arm64_user_regs), std::max(sizeof(unwindstack::x86_user_regs), sizeof(unwindstack::x86_64_user_regs))));
         regsBuffer = malloc(maxRegsSize);
@@ -68,7 +68,8 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
             }
             default: {}
         }
-    } else {
+    }
+    if (regs == nullptr) {
         regs = unwindstack::Regs::RemoteGet(targetThread->thread->tid);
     }
     if (regs != nullptr) {
@@ -93,7 +94,7 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
                     if (elf != nullptr) {
                         mf->isLoadElf = true;
                         copyString(mf->soName, elf->GetSoname().c_str());
-                        int buildIdSize = elf->GetBuildID().size();
+                        size_t buildIdSize = elf->GetBuildID().size();
                         const uint8_t * buildIdCode = reinterpret_cast<const uint8_t *>(elf->GetBuildID().c_str());
                         int buildIdWriteIndex = 0;
                         for (int i = 0; i < buildIdSize; i ++) {
