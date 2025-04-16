@@ -92,8 +92,17 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
                     auto elf = map->elf().get();
                     if (elf != nullptr) {
                         mf->isLoadElf = true;
-                        copyString(mf->elfBuildId, elf->GetBuildID().c_str());
                         copyString(mf->soName, elf->GetSoname().c_str());
+                        int buildIdSize = elf->GetBuildID().size();
+                        const uint8_t * buildIdCode = reinterpret_cast<const uint8_t *>(elf->GetBuildID().c_str());
+                        int buildIdWriteIndex = 0;
+                        for (int i = 0; i < buildIdSize; i ++) {
+                            if (buildIdWriteIndex >= (MAX_STR_SIZE - 2)) {
+                                break;
+                            }
+                            int s = sprintf(reinterpret_cast<char *>(mf->elfBuildId + buildIdWriteIndex), "%02x", buildIdCode[i]);
+                            buildIdWriteIndex += s;
+                        }
                     }
                 }
                 if (f.function_name.c_str()[0] != '\0') {
