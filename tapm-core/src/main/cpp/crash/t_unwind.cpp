@@ -109,11 +109,12 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
                     mf->isLoadSymbol = true;
                     mf->offsetInElf = f.rel_pc;
                     mf->offsetInSymbol = f.function_offset;
-                    copyString(mf->symbol, f.function_name.c_str());
                     int demgangleRet = 0;
-                    auto demaglinged = abi::__cxa_demangle(mf->symbol, nullptr, nullptr, &demgangleRet);
-                    if (ret == 0 && demaglinged != nullptr) {
+                    auto demaglinged = abi::__cxa_demangle(f.function_name.c_str(), nullptr, nullptr, &demgangleRet);
+                    if (demaglinged != nullptr) {
                         copyString(mf->symbol, demaglinged);
+                    } else {
+                        copyString(mf->symbol, f.function_name.c_str());
                     }
                     if (demaglinged != nullptr) {
                         free(demaglinged);

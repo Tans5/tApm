@@ -214,19 +214,19 @@ void writeFrames(LinkedList *frames, int fd, char *buffer, int *bufferPosition) 
                 s = sprintf(buffer + *bufferPosition, "  <anonymous: %lx>", f->mapStartAddr);
                 *bufferPosition = *bufferPosition + s;
             }
-            if (f->isLoadElf) {
+            if (f->elfFileStart > 0) {
                 if (f->elfFileStart > 0) {
                     s = sprintf(buffer + *bufferPosition, "!%s (offset 0x%lx)", f->soName, f->elfFileStart);
                     *bufferPosition = *bufferPosition + s;
                 }
-                if (f->isLoadSymbol) {
-                    s = sprintf(buffer + *bufferPosition, " (%s+%d)", f->symbol, f->offsetInSymbol);
-                    *bufferPosition = *bufferPosition + s;
-                }
-                if (f->elfBuildId[0] != '\0') {
-                    s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->elfBuildId);
-                    *bufferPosition = *bufferPosition + s;
-                }
+            }
+            if (f->isLoadSymbol) {
+                s = sprintf(buffer + *bufferPosition, " (%s+%d)", f->symbol, f->offsetInSymbol);
+                *bufferPosition = *bufferPosition + s;
+            }
+            if (f->elfBuildId[0] != '\0') {
+                s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->elfBuildId);
+                *bufferPosition = *bufferPosition + s;
             }
             s = sprintf(buffer + *bufferPosition, "\n");
             *bufferPosition = *bufferPosition + s;
