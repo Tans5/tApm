@@ -34,6 +34,7 @@ typedef struct CrashSignal {
     pid_t crashTid = 0;
     uid_t crashUid = 0;
     char crashFilePath[2 * MAX_STR_SIZE]{};
+    char fingerprint[MAX_STR_SIZE]{};
     int handleRet = 0;
 } CrashSignal;
 
@@ -48,12 +49,13 @@ typedef struct Crash {
     JavaVM  *jvm = nullptr;
     jobject jCrashMonitor = nullptr;
     char *crashOutputDir = nullptr;
+    char *fingerprint = nullptr;
 
     void *newSignalStackBuffer = nullptr;
     stack_t *oldSignalStack  = nullptr;
     LinkedList *oldCrashSignalActions = nullptr;
 
-    int32_t prepare(JNIEnv *jniEnv, jobject jCrashMonitorP, jstring crashFileDir);
+    int32_t prepare(JNIEnv *jniEnv, jobject jCrashMonitorP, jstring crashFileDir, jstring fingerprint);
     void release(JNIEnv *jniEnv);
 } Crash;
 

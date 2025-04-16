@@ -19,7 +19,8 @@ int writeCrash(
         pid_t crashPid,
         pid_t crashTid,
         uid_t crashUid,
-        char *crashFilePath,
+        const char *crashFilePath,
+        const char *fingerprint,
         LinkedList *memoryMaps,
         LinkedList *threadsStatus,
         ThreadStatus *crashedThreadStatus

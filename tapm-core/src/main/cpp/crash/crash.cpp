@@ -71,6 +71,7 @@ static int handleCrash(CrashSignal *crashSignal) {
             crashSignal->crashTid,
             crashSignal->crashUid,
             crashSignal->crashFilePath,
+            crashSignal->fingerprint,
             &memoryMaps,
             &crashedProcessThreadsStatus,
             crashedThreadStatus);
@@ -215,13 +216,14 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
             .crashTime = nowInMillis(),
             .crashPid = getpid(),
             .crashTid = gettid(),
-            .crashUid = getuid()
+            .crashUid = getuid(),
         };
         memcpy(&crashSignal.sigInfo, sig_info, sizeof(siginfo_t));
         memcpy(&crashSignal.userContext, uc, sizeof(crashSignal.userContext));
         char crashFileName[MAX_STR_SIZE];
         formatTime(crashSignal.crashTime, crashFileName, MAX_STR_SIZE);
         sprintf(crashSignal.crashFilePath, "%s/%s", monitor->crashOutputDir, crashFileName);
+        sprintf(crashSignal.fingerprint, "%s", monitor->fingerprint);
         int ret = pthread_mutex_trylock(&lock);
         if (ret == 0) {
             handleCrashOnNewProcess(&crashSignal);
@@ -252,13 +254,14 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
     }
 }
 
-int32_t Crash::prepare(JNIEnv *jniEnv, jobject jCrashMonitorP, jstring crashFileDir) {
+int32_t Crash::prepare(JNIEnv *jniEnv, jobject jCrashMonitorP, jstring crashFileDir, jstring j_fingerprint) {
     init();
     pthread_mutex_lock(&lock);
     this->startTime = nowInMillis();
     jniEnv->GetJavaVM(&this->jvm);
     this->jCrashMonitor = jniEnv->NewGlobalRef(jCrashMonitorP);
     this->crashOutputDir = strdup(jniEnv->GetStringUTFChars(crashFileDir, JNI_FALSE));
+    this->fingerprint = strdup(jniEnv->GetStringUTFChars(j_fingerprint, JNI_FALSE));
 
     struct sigaction newSigAction {};
     int32_t ret = 0;
@@ -329,6 +332,12 @@ void Crash::release(JNIEnv *jniEnv) {
         delete this->crashOutputDir;
         this->crashOutputDir = nullptr;
     }
+
+    if (this->fingerprint != nullptr) {
+        delete this->fingerprint;
+        this->fingerprint = nullptr;
+    }
+
     if (oldSignalStack != nullptr) {
         sigaltstack(oldSignalStack, nullptr);
         delete oldSignalStack;

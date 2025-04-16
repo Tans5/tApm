@@ -42,9 +42,10 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_tans_tapm_monitors_NativeCrashMonitor_registerNativeCrashMonitorNative(
         JNIEnv *env,
         jobject javaAnrMonitor,
-        jstring crashFileDir) {
+        jstring crashFileDir,
+        jstring fingerprint) {
     auto crash = new Crash;
-    auto ret = crash->prepare(env, javaAnrMonitor, crashFileDir);
+    auto ret = crash->prepare(env, javaAnrMonitor, crashFileDir, fingerprint);
     if (ret == 0) {
         return (int64_t) crash;
     } else {

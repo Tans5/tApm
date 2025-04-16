@@ -1,5 +1,6 @@
 package com.tans.tapm.monitors
 
+import android.os.Build
 import android.util.Log
 import androidx.annotation.Keep
 import com.tans.tapm.internal.tApmLog
@@ -33,7 +34,7 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
         }
         if (isDirInitSuccess) {
             executor.executeOnMainThread {
-                val ptr = registerNativeCrashMonitorNative(dir.canonicalPath)
+                val ptr = registerNativeCrashMonitorNative(dir.canonicalPath,  Build.FINGERPRINT)
                 if (ptr != 0L) {
                     nativePtr = ptr
                     Log.d(TAG, "NativeCrashMonitor started.")
@@ -96,21 +97,23 @@ class NativeCrashMonitor : AbsMonitor<NativeCrash>(Long.MAX_VALUE) {
         if (summary != null) {
             tApmLog.e(TAG, summary)
         }
-        dispatchMonitorData(NativeCrash(
-            sig = sig,
-            sigCode = sigCode,
-            crashPid = crashPid,
-            crashTid = crashTid,
-            crashUid = crashUid,
-            startTime = startTime,
-            crashTime = crashTime,
-            crashSummary = summary,
-            crashTraceFilePath = if (writeTraceFileResult == 0) crashTraceFilePath else null
-        ))
+        dispatchMonitorData(
+            NativeCrash(
+                sig = sig,
+                sigCode = sigCode,
+                crashPid = crashPid,
+                crashTid = crashTid,
+                crashUid = crashUid,
+                startTime = startTime,
+                crashTime = crashTime,
+                crashSummary = summary,
+                crashTraceFilePath = if (writeTraceFileResult == 0) crashTraceFilePath else null
+            )
+        )
 
     }
 
-    private external fun registerNativeCrashMonitorNative(crashFileDir: String): Long
+    private external fun registerNativeCrashMonitorNative(crashFileDir: String, fingerprint: String): Long
 
     private external fun unregisterNativeCrashMonitorNative(nativePtr: Long)
 

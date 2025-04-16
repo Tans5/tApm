@@ -250,7 +250,8 @@ int writeCrash(
         pid_t crashPid,
         pid_t crashTid,
         uid_t crashUid,
-        char *crashFilePath,
+        const char *crashFilePath,
+        const char *fingerprint,
         LinkedList *memoryMaps,
         LinkedList *threadsStatus,
         ThreadStatus *crashedThreadStatus
@@ -273,10 +274,7 @@ int writeCrash(
      */
     bufferPosition += sprintf(writerBuffer + bufferPosition, "%s\n", CRASH_START_LINE);
     // Build fingerprint
-    if (__system_property_get("ro.build.fingerprint", strBuffer) == 0) {
-        strncpy(strBuffer, "unknown", MAX_STR_SIZE);
-    }
-    bufferPosition += sprintf(writerBuffer + bufferPosition, "Build fingerprint: '%s'\n", strBuffer);
+    bufferPosition += sprintf(writerBuffer + bufferPosition, "Build fingerprint: '%s'\n", fingerprint);
     // Revision
     if (__system_property_get("ro.revision", strBuffer) == 0) {
         if (__system_property_get("ro.boot.hardware.revision", strBuffer) == 0) {
