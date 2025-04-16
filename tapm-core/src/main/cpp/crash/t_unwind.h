@@ -11,6 +11,7 @@
 #include "thread_control.h"
 #include "memory_maps.h"
 #include "../tapm_size.h"
+#include "unwindstack/AndroidUnwinder.h"
 
 typedef struct Frame {
     uint32_t index = 0;
@@ -31,7 +32,7 @@ typedef struct Frame {
     char symbol[MAX_STR_SIZE]{};
 } Frame;
 
-bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, LinkedList* outputFrames, int maxFrameSize);
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, unwindstack::AndroidUnwinder* unwinder, LinkedList* outputFrames, int maxFrameSize);
 
 void recycleFrames(LinkedList *toRecycle);
 

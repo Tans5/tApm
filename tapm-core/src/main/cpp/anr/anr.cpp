@@ -142,8 +142,8 @@ static void* handleAnrDataThread(void * arg_v) {
             auto jAnrMonitorClazz = env->GetObjectClass(jAnrMonitor);
             // auto jAnrMonitorClazz = env->FindClass("com/tans/tapm/monitors/AnrMonitor");
             auto anrMethodId = env->GetMethodID(jAnrMonitorClazz, "onAnr", "(JZLjava/lang/String;)V");
-            auto anrStackTrackJString = env->NewStringUTF(arg->anrTraceFile);
-            env->CallVoidMethod(jAnrMonitor, anrMethodId, writingAnrData->anrTime, writingAnrData->isFromMe, anrStackTrackJString);
+            auto anrStackTrackFilePath = env->NewStringUTF(arg->anrTraceFile);
+            env->CallVoidMethod(jAnrMonitor, anrMethodId, writingAnrData->anrTime, writingAnrData->isFromMe, anrStackTrackFilePath);
         }
     } else {
         LOGE("Wrong state, can't handle anr trace data.");

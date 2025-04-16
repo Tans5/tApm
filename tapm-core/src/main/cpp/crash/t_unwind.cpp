@@ -26,7 +26,7 @@ void copyString(char *dst, const char *src) {
     dst[srcLen] = '\0';
 }
 
-bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, LinkedList* outputFrames, int maxFrameSize) {
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, unwindstack::AndroidUnwinder* unwinder, LinkedList* outputFrames, int maxFrameSize) {
     if (maxFrameSize <= 0 || !targetThread->isGetRegs) {
         return false;
     }
@@ -73,9 +73,8 @@ bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, Lin
         regs = unwindstack::Regs::RemoteGet(targetThread->thread->tid);
     }
     if (regs != nullptr) {
-        unwindstack::AndroidRemoteUnwinder unwinder(crashedPid);
         unwindstack::AndroidUnwinderData unwinderData((size_t) maxFrameSize);
-        auto ret = unwinder.Unwind(regs, unwinderData);
+        auto ret = unwinder->Unwind(regs, unwinderData);
         if (ret) {
             for (const auto& f : unwinderData.frames) {
                 auto mf = new Frame;

@@ -341,7 +341,8 @@ int writeCrash(
      * Write crash thread. backtrace
      */
     LinkedList frames;
-    unwindFramesByUnwindStack(crashedThreadStatus, crashPid, &frames, 64);
+    unwindstack::AndroidRemoteUnwinder unwinder(crashPid);
+    unwindFramesByUnwindStack(crashedThreadStatus, &unwinder, &frames, 64);
     writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
     recycleFrames(&frames);
     flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
@@ -360,7 +361,7 @@ int writeCrash(
             bufferPosition += sprintf(writerBuffer + bufferPosition, "uid: %d\n", crashUid);
             writeRegs(&ts->regs, writerBuffer, &bufferPosition);
             flushBuffer(crashFileFd, writerBuffer, &bufferPosition);
-            unwindFramesByUnwindStack(ts, crashPid, &frames, 64);
+            unwindFramesByUnwindStack(ts, &unwinder, &frames, 64);
             writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
             recycleFrames(&frames);
             flushBuffer(crashFileFd, writerBuffer, &bufferPosition);

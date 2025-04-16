@@ -90,53 +90,39 @@ void* handleCrashThread(void * args) {
     return b;
 }
 
-static int handleCrashOnNewThread(CrashSignal *crashSignal) {
-    LOGD("Receive crash sig: %d", crashSignal->sig);
-    pthread_attr_t attr;
-    pthread_t t;
-    int ret = prctl(PR_SET_DUMPABLE, 1);
-    void * threadRet = nullptr;
-    if (ret != 0) {
-        LOGE("Set progress dumpable fail: %d", ret);
-        goto End;
+static void* reportJavaThread(void * args) {
+    auto crashSignal = static_cast<CrashSignal *>(args);
+    auto *monitor = workingMonitor;
+    if (monitor != nullptr) {
+        JNIEnv *env = nullptr;
+        monitor->jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+        if (env == nullptr) {
+            JavaVMAttachArgs jvmAttachArgs {
+                    .version = JNI_VERSION_1_6,
+                    .name = "NativeCrashReporter",
+                    .group = nullptr
+            };
+            auto result = monitor->jvm->AttachCurrentThread(&env, &jvmAttachArgs);
+            if (result != JNI_OK) {
+                LOGE("Attach java thread fail.");
+                env = nullptr;
+            }
+        }
+        if (env != nullptr) {
+            LOGD("Start report java.");
+            auto jMonitor = monitor->jCrashMonitor;
+            auto jMonitorClazz = env->GetObjectClass(jMonitor);
+            // auto jMonitorClazz = env->FindClass("com/tans/tapm/monitors/NativeCrashMonitor");
+            auto crashMethodId = env->GetMethodID(jMonitorClazz, "onNativeCrash", "(IIIIIJJLjava/lang/String;I)V");
+            auto crashStackFilePath = env->NewStringUTF(crashSignal->crashFilePath);
+            env->CallVoidMethod(jMonitor, crashMethodId,
+                                crashSignal->sig, crashSignal->sigInfo.si_code, crashSignal->crashPid, crashSignal->crashTid, crashSignal->crashTid, crashSignal->startTime, crashSignal->crashTime, crashStackFilePath, crashSignal->handleRet);
+            LOGD("Report java success.");
+        } else {
+            LOGE("Report java fail.");
+        }
     }
-    errno = 0;
-    ret = prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
-    if (ret != 0 && errno != EINVAL) {
-        LOGE("Set process tracer fail: %d", ret);
-        ret = -1;
-        goto End;
-    } else {
-        ret = 0;
-    }
-
-    ret = pthread_attr_init(&attr);
-    if (ret != 0) {
-        LOGE("Init thread attr fail: %d", ret);
-        ret = -1;
-        goto End;
-    }
-
-    ret = pthread_attr_setstacksize(&attr, MAX_THREAD_STACK_SIZE);
-    if (ret != 0) {
-        LOGE("Set thread stack size fail: %d", ret);
-        ret = -1;
-        goto End;
-    }
-
-    pthread_create(&t, &attr, handleCrashThread, crashSignal);
-    pthread_join(t, &threadRet);
-    if (threadRet != nullptr) {
-        ret = *static_cast<int *>(threadRet);
-        free(threadRet);
-        threadRet = nullptr;
-    } else {
-        ret = -1;
-    }
-    LOGD("Thread result: %d", ret);
-    End:
-    pthread_attr_destroy(&attr);
-    return ret;
+    return nullptr;
 }
 
 static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
@@ -144,6 +130,7 @@ static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
     int childProcessPid = 0;
     if (ret != 0) {
         LOGE("Set progress dumpable fail: %d", ret);
+        ret = -1;
         goto End;
     }
     errno = 0;
@@ -152,16 +139,41 @@ static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
         LOGE("Set process tracer fail: %d", ret);
         ret = -1;
         goto End;
-    } else {
-        ret = 0;
     }
     childProcessPid = fork();
     if (childProcessPid == 0) {
         // ChildProcess
         LOGD("Child process started.");
         alarm(30);
-        int r = handleCrashOnNewThread(crashSignal);
-        _Exit(r);
+        pthread_attr_t attr;
+        pthread_t t;
+        void * threadRet = nullptr;
+        ret = pthread_attr_init(&attr);
+        if (ret != 0) {
+            LOGE("Init thread attr fail: %d", ret);
+            ret = -1;
+            goto ChildProcessEnd;
+        }
+
+        ret = pthread_attr_setstacksize(&attr, MAX_THREAD_STACK_SIZE);
+        if (ret != 0) {
+            LOGE("Set thread stack size fail: %d", ret);
+            ret = -1;
+            goto ChildProcessEnd;
+        }
+
+        pthread_create(&t, &attr, handleCrashThread, crashSignal);
+        pthread_join(t, &threadRet);
+        pthread_attr_destroy(&attr);
+        if (threadRet != nullptr) {
+            ret = *static_cast<int *>(threadRet);
+            free(threadRet);
+            threadRet = nullptr;
+        } else {
+            ret = -1;
+        }
+        ChildProcessEnd:
+        _Exit(ret);
     } else if (childProcessPid > 0) {
         LOGD("Waiting child process finish work.");
         // ParentProcess.
@@ -179,13 +191,17 @@ static int handleCrashOnNewProcess(CrashSignal *crashSignal) {
         LOGE("Create child process fail: %d", childProcessPid);
         ret = -1;
     }
-
+    crashSignal->handleRet = ret;
     End:
-    if (ret == 0) {
-        // TODO: success.
+    pthread_attr_t attr;
+    pthread_t t;
+    if (pthread_attr_init(&attr) == 0 && pthread_attr_setstacksize(&attr, MAX_THREAD_STACK_SIZE) == 0) {
+        pthread_create(&t, &attr, reportJavaThread, crashSignal);
+        pthread_join( t, nullptr);
     } else {
-        // TODO: fail.
+        LOGE("Start report java thread fail.");
     }
+    pthread_attr_destroy(&attr);
     return ret;
 }
 

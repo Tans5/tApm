@@ -34,6 +34,7 @@ typedef struct CrashSignal {
     pid_t crashTid = 0;
     uid_t crashUid = 0;
     char crashFilePath[2 * MAX_STR_SIZE]{};
+    int handleRet = 0;
 } CrashSignal;
 
 typedef struct OldCrashSignalAction {
