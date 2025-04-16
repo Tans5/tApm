@@ -3,269 +3,127 @@
 //
 #include <cstring>
 #include "t_unwind.h"
-#include "libunwind-ptrace.h"
 #include "../tapm_log.h"
 #include "t_regs.h"
 #include "unwindstack/AndroidUnwinder.h"
 #include "unwindstack/Regs.h"
+#include "unwindstack/RegsX86.h"
+#include "unwindstack/RegsArm64.h"
+#include "unwindstack/RegsX86_64.h"
+#include "unwindstack/RegsArm.h"
+#include "unwindstack/UserArm.h"
+#include "unwindstack/UserArm64.h"
+#include "unwindstack/UserX86.h"
+#include "unwindstack/UserX86_64.h"
+#include <cxxabi.h>
 
-void copyRegs(unw_context_t *target, regs_t *src) {
-#if defined(__aarch64__)
-    memcpy(target->uc_mcontext.regs, src->regs, sizeof(src->regs));
-    target->uc_mcontext.pc = src->pc;
-    target->uc_mcontext.sp = src->sp;
-    target->uc_mcontext.pstate = src->pstate;
-#elif defined(__arm__)
-    target->regs[UNW_ARM_R0] = src->uregs[T_REGS_R0];
-    target->regs[UNW_ARM_R1] = src->uregs[T_REGS_R1];
-    target->regs[UNW_ARM_R2] = src->uregs[T_REGS_R2];
-    target->regs[UNW_ARM_R3] = src->uregs[T_REGS_R3];
-    target->regs[UNW_ARM_R4] = src->uregs[T_REGS_R4];
-    target->regs[UNW_ARM_R5] = src->uregs[T_REGS_R5];
-    target->regs[UNW_ARM_R6] = src->uregs[T_REGS_R6];
-    target->regs[UNW_ARM_R7] = src->uregs[T_REGS_R7];
-    target->regs[UNW_ARM_R8] = src->uregs[T_REGS_R8];
-    target->regs[UNW_ARM_R9] = src->uregs[T_REGS_R9];
-    target->regs[UNW_ARM_R10] = src->uregs[T_REGS_R10];
-    target->regs[UNW_ARM_R11] = src->uregs[T_REGS_R11];
-    target->regs[UNW_ARM_R12] = src->uregs[T_REGS_IP];
-    target->regs[UNW_ARM_R13] = src->uregs[T_REGS_SP];
-    target->regs[UNW_ARM_R14] = src->uregs[T_REGS_LR];
-    target->regs[UNW_ARM_R15] = src->uregs[T_REGS_PC];
-#elif defined(__x86_64__)
-    // 通用寄存器 (15)
-    target->uc_mcontext.gregs[REG_R15] = src->r15;
-    target->uc_mcontext.gregs[REG_R14] = src->r14;
-    target->uc_mcontext.gregs[REG_R13] = src->r13;
-    target->uc_mcontext.gregs[REG_R12] = src->r12;
-    target->uc_mcontext.gregs[REG_RBP] = src->rbp;
-    target->uc_mcontext.gregs[REG_RBX] = src->rbx;
-    target->uc_mcontext.gregs[REG_R11] = src->r11;
-    target->uc_mcontext.gregs[REG_R10] = src->r10;
-    target->uc_mcontext.gregs[REG_R9]  = src->r9;
-    target->uc_mcontext.gregs[REG_R8]  = src->r8;
-    target->uc_mcontext.gregs[REG_RAX] = src->rax;
-    target->uc_mcontext.gregs[REG_RCX] = src->rcx;
-    target->uc_mcontext.gregs[REG_RDX] = src->rdx;
-    target->uc_mcontext.gregs[REG_RSI] = src->rsi;
-    target->uc_mcontext.gregs[REG_RDI] = src->rdi;
-
-    // 程序计数器和标志寄存器
-    target->uc_mcontext.gregs[REG_RIP] = src->rip;
-    target->uc_mcontext.gregs[REG_EFL] = src->eflags;
-
-    // 栈指针
-    target->uc_mcontext.gregs[REG_RSP] = src->rsp;
-#elif defined(__i386__)
-    target->uc_mcontext.gregs[REG_EAX]  =   src->eax;
-    target->uc_mcontext.gregs[REG_EBX]  =   src->ebx;
-    target->uc_mcontext.gregs[REG_ECX]  =   src->ecx;
-    target->uc_mcontext.gregs[REG_EDX]  =   src->edx;
-    target->uc_mcontext.gregs[REG_ESI]  =   src->esi;
-    target->uc_mcontext.gregs[REG_EDI]  =   src->edi;
-    target->uc_mcontext.gregs[REG_EBP]  =   src->ebp;
-    target->uc_mcontext.gregs[REG_ESP]  =   src->esp;
-    target->uc_mcontext.gregs[REG_EIP]  =   src->eip;
-    target->uc_mcontext.gregs[REG_EFL]  =   src->eflags;
-    target->uc_mcontext.gregs[REG_DS]   =   src->xds;
-    target->uc_mcontext.gregs[REG_ES]   =   src->xes;
-    target->uc_mcontext.gregs[REG_FS]   =   src->xfs;
-    target->uc_mcontext.gregs[REG_GS]   =   src->xgs;
-    target->uc_mcontext.gregs[REG_CS]   =   src->xcs;
-    target->uc_mcontext.gregs[REG_SS]   =   src->xss;
-#endif
+void copyString(char *dst, const char *src) {
+    auto srcLen = strlen(src);
+    if (srcLen > MAX_STR_SIZE - 1) {
+        srcLen = MAX_STR_SIZE - 1;
+    }
+    memcpy(dst, src, srcLen);
+    dst[srcLen] = '\0';
 }
 
-bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize) {
-    if (maxFrameSize <= 0 || !targetThread->isSuspend) {
-        return false;
-    }
-
-    unw_cursor_t cursor;
-    unw_word_t ip, sp;
-    Iterator i;
-
-    unw_addr_space_t remote_as = unw_create_addr_space(&_UPT_accessors, 0);
-    void *context = _UPT_create(targetThread->thread->tid);
-
-    int ret = unw_init_remote(&cursor, remote_as, context);
-    if (ret != 0) {
-        LOGE("Unwind init remote fail: %d", ret);
-        goto End;
-    }
-
-    do {
-        unw_get_reg(&cursor, UNW_REG_IP, &ip);
-        if (ip == 0) {
-            break;
-        }
-        unw_get_reg(&cursor, UNW_REG_SP, &sp);
-        if (outputFrames->size != 0) {
-#if defined(__aarch64__)
-            if (ip >= 4) {
-                ip -= 4;
-            }
-#elif defined(__arm__)
-            if (ip & 0x1) {
-                if (ip >= 4) {
-                    ip -= 4;
-                }
-            } else {
-                if (ip >= 8) {
-                    ip -= 8;
-                }
-            }
-#endif
-        }
-        auto f = new Frame;
-        f->pc = ip;
-        f->sp = sp;
-        f->index = outputFrames->size;
-        outputFrames->addToLast(f);
-    } while(outputFrames->size < maxFrameSize && unw_step(&cursor) > 0);
-
-    outputFrames->iterator(&i);
-    while(i.containValue()) {
-        auto f = static_cast<Frame *>(i.value());
-        f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
-        i.next();
-    }
-    outputFrames->iterator(&i);
-    while (i.containValue()) {
-        auto m = static_cast<Frame *>(i.value())->mapped;
-        if (m != nullptr) {
-            recycleElfFileMap(m);
-        }
-        i.next();
-    }
-
-    End:
-    _UPT_destroy(context);
-    unw_destroy_addr_space(remote_as);
-    return ret == 0;
-}
-
-bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize) {
-    if (maxFrameSize <= 0 || !targetThread->isGetRegs) {
-        return false;
-    }
-
-    unw_cursor_t cursor; unw_context_t uc;
-    unw_word_t ip, sp;
-
-    auto regs = targetThread->regs;
-    unw_getcontext(&uc);
-    if (targetThread->crashSignalCtx != nullptr) {
-#if defined(__arm__)
-        copyRegs(&uc, &regs);
-#else
-        memcpy(&uc, targetThread->crashSignalCtx, sizeof(uc));
-#endif
-    } else {
-        copyRegs(&uc, &regs);
-    }
-
-    unw_init_local(&cursor, &uc);
-    do {
-        unw_get_reg(&cursor, UNW_REG_IP, &ip);
-        if (ip == 0) {
-            break;
-        }
-        unw_get_reg(&cursor, UNW_REG_SP, &sp);
-        if (outputFrames->size != 0) {
-#if defined(__aarch64__)
-            if (ip >= 4) {
-                ip -= 4;
-            }
-#elif defined(__arm__)
-            if (ip & 0x1) {
-                if (ip >= 4) {
-                    ip -= 4;
-                }
-            } else {
-                if (ip >= 8) {
-                    ip -= 8;
-                }
-            }
-#endif
-        }
-        auto f = new Frame;
-        f->pc = ip;
-        f->sp = sp;
-        f->index = outputFrames->size;
-        outputFrames->addToLast(f);
-    } while (outputFrames->size < maxFrameSize && unw_step(&cursor) > 0);
-
-    Iterator i;
-    outputFrames->iterator(&i);
-    while(i.containValue()) {
-        auto f = static_cast<Frame *>(i.value());
-        f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
-        i.next();
-    }
-    outputFrames->iterator(&i);
-    while (i.containValue()) {
-        auto m = static_cast<Frame *>(i.value())->mapped;
-        if (m != nullptr) {
-            recycleElfFileMap(m);
-        }
-        i.next();
-    }
-
-    return true;
-}
-
-bool unwindFramesByUnwindStack(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize) {
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, LinkedList* outputFrames, int maxFrameSize) {
     if (maxFrameSize <= 0 || !targetThread->isGetRegs) {
         return false;
     }
     unwindstack::Regs *regs = nullptr;
-    if (targetThread->crashSignalCtx != nullptr) {
+    unwindstack::ArchEnum arch = unwindstack::ARCH_ARM64;
+    void * regsBuffer = nullptr;
 #if defined(__aarch64__)
-        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86_64, targetThread->crashSignalCtx);
+    arch = unwindstack::ARCH_ARM64;
 #elif defined(__arm__)
-        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_ARM, targetThread->crashSignalCtx);
+    arch = unwindstack::ARCH_ARM;
 #elif defined(__x86_64__)
-        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86_64, targetThread->crashSignalCtx);
+    arch = unwindstack::ARCH_X86_64;
 #elif defined(__i386__)
-        regs = unwindstack::Regs::CreateFromUcontext(unwindstack::ARCH_X86, targetThread->crashSignalCtx);
+    arch = unwindstack::ARCH_X86;
 #endif
+    if (targetThread->crashSignalCtx != nullptr) {
+        regs = unwindstack::Regs::CreateFromUcontext(arch, targetThread->crashSignalCtx);
+    } else if (targetThread->isGetRegs) {
+        auto maxRegsSize = std::max(sizeof(unwindstack::arm_user_regs),
+                std::max(sizeof(unwindstack::arm64_user_regs), std::max(sizeof(unwindstack::x86_user_regs), sizeof(unwindstack::x86_64_user_regs))));
+        regsBuffer = malloc(maxRegsSize);
+        memcpy(regsBuffer, &targetThread->regs, sizeof(targetThread->regs));
+        switch (arch) {
+            case unwindstack::ARCH_ARM64: {
+                regs = unwindstack::RegsArm64::Read(regsBuffer);
+                break;
+            }
+            case unwindstack::ARCH_ARM: {
+                regs = unwindstack::RegsArm::Read(regsBuffer);
+                break;
+            }
+            case unwindstack::ARCH_X86_64: {
+                regs = unwindstack::RegsX86_64::Read(regsBuffer);
+                break;
+            }
+            case unwindstack::ARCH_X86: {
+                regs = unwindstack::RegsX86::Read(regsBuffer);
+                break;
+            }
+            default: {}
+        }
     } else {
         regs = unwindstack::Regs::RemoteGet(targetThread->thread->tid);
     }
     if (regs != nullptr) {
-        unwindstack::AndroidRemoteUnwinder unwinder(targetThread->thread->tid);
-        unwindstack::AndroidUnwinderData unwinderData;
+        unwindstack::AndroidRemoteUnwinder unwinder(crashedPid);
+        unwindstack::AndroidUnwinderData unwinderData((size_t) maxFrameSize);
         auto ret = unwinder.Unwind(regs, unwinderData);
         if (ret) {
             for (const auto& f : unwinderData.frames) {
                 auto mf = new Frame;
                 mf->pc = f.pc;
                 mf->sp = f.sp;
-                mf->index = outputFrames->size;
-                outputFrames->addToLast(mf);
-            }
-            Iterator i;
-            outputFrames->iterator(&i);
-            while(i.containValue()) {
-                auto f = static_cast<Frame *>(i.value());
-                f->isLoadSymbol = loadElfSymbol(f->pc, memoryMaps, &f->mapped, &f->offsetInElf, f->symbol, &f->offsetInSymbol);
-                i.next();
-            }
-            outputFrames->iterator(&i);
-            while (i.containValue()) {
-                auto m = static_cast<Frame *>(i.value())->mapped;
-                if (m != nullptr) {
-                    recycleElfFileMap(m);
+                mf->index = f.num;
+                auto map = f.map_info.get();
+                if (map != nullptr) {
+                    mf->isLoadMap = true;
+                    mf->mapStartAddr = map->start();
+                    mf->mapEndAddr = map->end();
+                    copyString(mf->mapPath, map->name().c_str());
+                    mf->elfFileStart =  map->elf_start_offset();
+                    mf->elfLoadStart = map->elf_offset();
+                    auto elf = map->elf().get();
+                    if (elf != nullptr) {
+                        mf->isLoadElf = true;
+                        copyString(mf->elfBuildId, elf->GetBuildID().c_str());
+                        copyString(mf->soName, elf->GetSoname().c_str());
+                    }
                 }
-                i.next();
+                if (f.function_name.c_str()[0] != '\0') {
+                    mf->isLoadSymbol = true;
+                    mf->offsetInElf = f.rel_pc;
+                    mf->offsetInSymbol = f.function_offset;
+                    copyString(mf->symbol, f.function_name.c_str());
+                    int demgangleRet = 0;
+                    auto demaglinged = abi::__cxa_demangle(mf->symbol, nullptr, nullptr, &demgangleRet);
+                    if (ret == 0 && demaglinged != nullptr) {
+                        copyString(mf->symbol, demaglinged);
+                    }
+                    if (demaglinged != nullptr) {
+                        free(demaglinged);
+                    }
+                }
+                outputFrames->addToLast(mf);
             }
         } else {
             LOGE("Unwind fail.");
         }
+        if (regsBuffer != nullptr) {
+            free(regsBuffer);
+        }
         return ret;
     } else {
         LOGE("Create regs fail.");
+        if (regsBuffer != nullptr) {
+            free(regsBuffer);
+        }
         return false;
     }
 

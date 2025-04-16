@@ -202,29 +202,29 @@ void writeFrames(LinkedList *frames, int fd, char *buffer, int *bufferPosition) 
             flushBuffer(fd, buffer, bufferPosition);
         }
         auto f = static_cast<Frame *>(i.value());
-        if (f->mapped != nullptr) {
+        if (f->isLoadMap) {
             // pc
             s = sprintf(buffer + *bufferPosition, "      #%02zu pc %016lx", f->index, f->offsetInElf);
             *bufferPosition = *bufferPosition + s;
             // path name
-            if (f->mapped->pathname[0] != '\0') {
-                s = sprintf(buffer + *bufferPosition, "  %s", f->mapped->pathname);
+            if (f->mapPath[0] != '\0') {
+                s = sprintf(buffer + *bufferPosition, "  %s", f->mapPath);
                 *bufferPosition = *bufferPosition + s;
             } else {
-                s = sprintf(buffer + *bufferPosition, "  <anonymous: 0x%016lx>", f->mapped->startAddr);
+                s = sprintf(buffer + *bufferPosition, "  <anonymous: %lx>", f->mapStartAddr);
                 *bufferPosition = *bufferPosition + s;
             }
-            if (f->mapped->elf != nullptr) {
-                if (f->mapped->elfFileStart > 0) {
-                    s = sprintf(buffer + *bufferPosition, "!%s (offset 0x%lx)", f->mapped->elf->soName, f->mapped->elfFileStart);
+            if (f->isLoadElf) {
+                if (f->elfFileStart > 0) {
+                    s = sprintf(buffer + *bufferPosition, "!%s (offset 0x%lx)", f->soName, f->elfFileStart);
                     *bufferPosition = *bufferPosition + s;
                 }
                 if (f->isLoadSymbol) {
                     s = sprintf(buffer + *bufferPosition, " (%s+%d)", f->symbol, f->offsetInSymbol);
                     *bufferPosition = *bufferPosition + s;
                 }
-                if (f->mapped->elf->buildId[0] != '\0') {
-                    s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->mapped->elf->buildId);
+                if (f->elfBuildId[0] != '\0') {
+                    s = sprintf(buffer + *bufferPosition, " (BuildId: %s)", f->elfBuildId);
                     *bufferPosition = *bufferPosition + s;
                 }
             }
@@ -337,7 +337,7 @@ int writeCrash(
      * Write crash thread. backtrace
      */
     LinkedList frames;
-    unwindFramesByUnwindStack(crashedThreadStatus, memoryMaps, &frames, 64);
+    unwindFramesByUnwindStack(crashedThreadStatus, crashPid, &frames, 64);
     writeFrames(&frames, crashFileFd, writerBuffer, &bufferPosition);
     recycleFrames(&frames);
     flushBuffer(crashFileFd, writerBuffer, &bufferPosition);

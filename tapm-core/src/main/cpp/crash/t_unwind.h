@@ -16,18 +16,22 @@ typedef struct Frame {
     uint32_t index = 0;
     addr_t pc = 0;
     addr_t sp = 0;
+    bool isLoadMap = false;
+    char mapPath[MAX_STR_SIZE]{};
+    addr_t mapStartAddr = 0;
+    addr_t mapEndAddr = 0;
+    bool isLoadElf = false;
+    addr_t elfFileStart = 0;
+    addr_t elfLoadStart = 0;
+    char elfBuildId[MAX_STR_SIZE]{};
+    char soName[MAX_STR_SIZE]{};
+    bool isLoadSymbol = false;
     addr_t offsetInElf = 0;
     addr_t offsetInSymbol = 0;
-    MemoryMap * mapped = nullptr;
-    bool isLoadSymbol = false;
     char symbol[MAX_STR_SIZE]{};
 } Frame;
 
-bool unwindFramesByPtrace(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);
-
-bool unwindFramesLocal(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);
-
-bool unwindFramesByUnwindStack(ThreadStatus *targetThread, LinkedList* memoryMaps, LinkedList* outputFrames, int maxFrameSize);
+bool unwindFramesByUnwindStack(ThreadStatus *targetThread, pid_t crashedPid, LinkedList* outputFrames, int maxFrameSize);
 
 void recycleFrames(LinkedList *toRecycle);
 
