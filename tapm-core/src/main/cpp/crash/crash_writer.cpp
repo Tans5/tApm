@@ -211,7 +211,7 @@ void writeFrames(LinkedList *frames, int fd, char *buffer, int *bufferPosition) 
                 s = sprintf(buffer + *bufferPosition, "  %s", f->mapPath);
                 *bufferPosition = *bufferPosition + s;
             } else {
-                s = sprintf(buffer + *bufferPosition, "  <anonymous: %lx>", f->mapStartAddr);
+                s = sprintf(buffer + *bufferPosition, "  <anonymous:%lx>", f->mapStartAddr);
                 *bufferPosition = *bufferPosition + s;
             }
             // so name
