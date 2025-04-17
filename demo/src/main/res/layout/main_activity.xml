@@ -36,4 +36,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/test_native_crash_bt"/>
 
+    <Button
+        android:id="@+id/http_get_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="HTTP Get"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/test_native_crash_new_thread_bt" />
+
+    <Button
+        android:id="@+id/http_post_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="HTTP Post"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/http_get_bt" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

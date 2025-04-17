@@ -10,6 +10,10 @@ import com.tans.tuiutils.systembar.annotation.ContentViewFitSystemWindow
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @SystemBarStyle
 @ContentViewFitSystemWindow
@@ -35,6 +39,44 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
                 (application as App).apm.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
             }.start()
         }
+        viewBinding.httpGetBt.clicks(this, clickWorkOn = Dispatchers.IO) {
+            try {
+                val client = (application as App).okHttpClient
+                val request = Request.Builder()
+                    .get()
+                    .url("https://api.github.com/repos/tans5/tapm")
+                    .build()
+                val call = client.newCall(request)
+                val response = call.execute()
+                response.use {
+                    val responseString = response.body?.string()
+                    AppLog.d(TAG, "Http Get resp: $responseString")
+                }
+            } catch (e: Throwable) {
+                AppLog.e(TAG, "Http Get fail: ${e.message}", e)
+            }
+
+        }
+        viewBinding.httpPostBt.clicks(this, clickWorkOn = Dispatchers.IO) {
+            try {
+                val client = (application as App).okHttpClient
+                val request = Request.Builder()
+                    .post("\"{ \"name\": \"Tans5\" }\"".toRequestBody("application/json".toMediaTypeOrNull()))
+                    .url("https://api.github.com/repos/tans5/tapm")
+                    .build()
+                val call = client.newCall(request)
+                val response = call.execute()
+                response.use {
+                    val responseString = response.body?.string()
+                    AppLog.d(TAG, "Http Post resp: $responseString")
+                }
+            } catch (e: Throwable) {
+                AppLog.e(TAG, "Http Post fail: ${e.message}", e)
+            }
+        }
     }
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 }

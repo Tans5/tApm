@@ -58,6 +58,9 @@ dependencies {
     implementation(libs.coroutines.core.jvm)
     implementation(libs.coroutines.android)
 
+    implementation(libs.okhttp3)
+    implementation(libs.okhttp3.logging.interceptor)
+
     implementation(libs.tuiutils)
     implementation(libs.tlog)
     implementation(libs.tlrucatch)

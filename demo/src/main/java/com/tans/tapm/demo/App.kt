@@ -14,13 +14,25 @@ import com.tans.tapm.monitors.AnrMonitor
 import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
+import com.tans.tapm.monitors.HttpRequestMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
 import com.tans.tapm.tApm
 import com.tans.tapm.toHumanReadablePercent
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 
 class App : Application() {
+
+    val okHttpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor(HttpRequestMonitor)
+            .addInterceptor(HttpLoggingInterceptor { s ->
+                AppLog.d("HttpLogging", s)
+            }.apply { setLevel(HttpLoggingInterceptor.Level.BODY) })
+            .build()
+    }
 
     val apm: tApm by lazy {
         tApm.Companion.Builder(this)
@@ -87,6 +99,8 @@ class App : Application() {
                     AppLog.d(TAG, t.toString())
                 }
             })
+            // Http Monitor
+            .addMonitor(HttpRequestMonitor())
             .setInitCallback(object : InitCallback {
                 val TAG = "ApmInit"
 

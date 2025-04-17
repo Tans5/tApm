@@ -7,9 +7,10 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
 material = "1.12.0"
-tuiutils = "1.1.1"
 corouines = "1.10.1"
 androidx-annotaion = "1.9.1"
+okhttp3 = "4.12.0"
+tuiutils = "1.1.1"
 tlog = "1.0.1"
 tlrucache = "1.0.1"
 
@@ -24,6 +25,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "corouines" }
 coroutines-core-jvm = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core-jvm", version.ref = "corouines" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "corouines" }
+okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp3"}
+okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp3" }
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
 tlrucatch = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
