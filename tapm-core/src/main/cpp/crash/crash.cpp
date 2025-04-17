@@ -221,8 +221,9 @@ static void crashSignalHandler(int sig, siginfo_t *sig_info, void *uc) {
         memcpy(&crashSignal.sigInfo, sig_info, sizeof(siginfo_t));
         memcpy(&crashSignal.userContext, uc, sizeof(crashSignal.userContext));
         char crashFileName[MAX_STR_SIZE];
-        formatTime(crashSignal.crashTime, crashFileName, MAX_STR_SIZE);
-        sprintf(crashSignal.crashFilePath, "%s/%s", monitor->crashOutputDir, crashFileName);
+        formatTime(crashSignal.crashTime, crashFileName);
+        replaceChar(':', '_', crashFileName);
+        snprintf(crashSignal.crashFilePath, MAX_STR_SIZE * 2, "%s/%s", monitor->crashOutputDir, crashFileName);
         sprintf(crashSignal.fingerprint, "%s", monitor->fingerprint);
         int ret = pthread_mutex_trylock(&lock);
         if (ret == 0) {

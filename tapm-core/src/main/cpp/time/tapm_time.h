@@ -8,8 +8,12 @@
 
 int64_t nowInMillis();
 
-void formatTime(int64_t timeInMillis, char * outputBuffer, int outputBufferSize);
+void formatTime(int64_t timeInMillis, char * outputBuffer);
 
-void formatTimeNow(char * outputBuffer, int outputBufferSize);
+void formatTimeNow(char * outputBuffer);
+
+void replaceChar(char targetChar, char newChar, const char *input, char *output);
+
+void replaceChar(char targetChar, char newChar, char *targetStr);
 
 #endif //TAPM_TAPM_TIME_H

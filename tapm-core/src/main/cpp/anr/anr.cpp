@@ -89,9 +89,10 @@ static size_t my_write(int fd, const void *const buf, size_t count) {
             char *copy = static_cast<char *>(malloc(count));
             memcpy(copy, buf, count);
             auto args = new HandleAnrDataThreadArgs;
-            char crashFileName[MAX_STR_SIZE];
-            formatTime(writingAnrData->anrTime, crashFileName, MAX_STR_SIZE);
-            sprintf(args->anrTraceFile, "%s/%s", anrMonitor->anrOutputDir, crashFileName);
+            char anrFileName[MAX_STR_SIZE];
+            formatTime(writingAnrData->anrTime, anrFileName);
+            replaceChar(':', '_', anrFileName);
+            snprintf(args->anrTraceFile, MAX_STR_SIZE * 2, "%s/%s", anrMonitor->anrOutputDir, anrFileName);
             auto traceFileFd = open(args->anrTraceFile, O_CREAT | O_RDWR, 0666);
             if (traceFileFd <= 0) {
                 LOGE("Create anr trace file fail.");

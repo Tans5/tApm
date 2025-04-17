@@ -285,7 +285,7 @@ int writeCrash(
     // Abi
     bufferPosition += sprintf(writerBuffer + bufferPosition, "Abi: '%s'\n", CPU_ARCH);
     // Time
-    formatTime(crashTime, strBuffer, MAX_STR_SIZE);
+    formatTime(crashTime, strBuffer);
     bufferPosition += sprintf(writerBuffer + bufferPosition, "Timestamp: %s\n", strBuffer);
     // Process uptime
     auto uptimeInSeconds = (double) (crashTime - startTime) / 1000.0;
