@@ -4,9 +4,6 @@ import android.app.ActivityManager
 import android.app.Application
 import android.os.Build
 import android.os.HandlerThread
-import com.tans.tapm.monitors.CpuUsageMonitor
-import com.tans.tapm.monitors.CpuPowerCostMonitor
-import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.DeviceInfo
 import com.tans.tapm.monitors.AnrMonitor
@@ -141,9 +138,6 @@ class tApm private constructor(
                 JavaCrashMonitor::class.java to JavaCrashMonitor(),
                 NativeCrashMonitor::class.java to NativeCrashMonitor(),
                 AnrMonitor::class.java to AnrMonitor(),
-                CpuUsageMonitor::class.java to CpuUsageMonitor(),
-                CpuPowerCostMonitor::class.java to CpuPowerCostMonitor(),
-                ForegroundScreenPowerCostMonitor::class.java to ForegroundScreenPowerCostMonitor()
             )
 
             private var backgroundThread: HandlerThread? = null

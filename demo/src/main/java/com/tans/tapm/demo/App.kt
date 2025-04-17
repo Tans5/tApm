@@ -9,11 +9,13 @@ import com.tans.tapm.model.CpuPowerCost
 import com.tans.tapm.model.CpuUsage
 import com.tans.tapm.model.ForegroundScreenPowerCost
 import com.tans.tapm.model.JavaCrash
+import com.tans.tapm.model.NativeCrash
 import com.tans.tapm.monitors.AnrMonitor
 import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
+import com.tans.tapm.monitors.NativeCrashMonitor
 import com.tans.tapm.tApm
 import com.tans.tapm.toHumanReadablePercent
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
@@ -29,11 +31,31 @@ class App : Application() {
                     t: JavaCrash,
                     apm: tApm
                 ) {
-                    AppLog.e(TAG, "Crashed: ${t.error.message}", t.error)
-                    AppLog.flushLog()
+                    AppLog.e(TAG, "JavaCrashed: ${t.error.message}, TraceFile: ${t.crashTraceFilePath}")
+                }
+            })
+            // NativeCrash
+            .addMonitorObserver(NativeCrashMonitor::class.java, object : Monitor.MonitorDataObserver<NativeCrash> {
+                val TAG = "NativeCrash"
+                override fun onMonitorDataUpdate(
+                    t: NativeCrash,
+                    apm: tApm
+                ) {
+                    AppLog.e(TAG, "NativeCrash, TraceFile: ${t.crashTraceFilePath}")
+                }
+            })
+            // Anr
+            .addMonitorObserver(AnrMonitor::class.java, object : Monitor.MonitorDataObserver<Anr> {
+                val TAG = "Anr"
+                override fun onMonitorDataUpdate(
+                    t: Anr,
+                    apm: tApm
+                ) {
+                    AppLog.e(TAG, "Receive anr signal, isSigFromMe: ${t.isSigFromMe}, anrTraceFile: ${t.anrTraceFile}")
                 }
             })
             // CpuUsage
+            .addMonitor(CpuUsageMonitor())
             .addMonitorObserver(CpuUsageMonitor::class.java, object : Monitor.MonitorDataObserver<CpuUsage> {
                 val TAG = "CpuUsage"
                 override fun onMonitorDataUpdate(
@@ -44,6 +66,7 @@ class App : Application() {
                 }
             })
             // CpuPowerCost
+            .addMonitor(CpuPowerCostMonitor())
             .addMonitorObserver(CpuPowerCostMonitor::class.java, object : Monitor.MonitorDataObserver<CpuPowerCost> {
                 val TAG = "CpuPower"
                 override fun onMonitorDataUpdate(
@@ -54,6 +77,7 @@ class App : Application() {
                 }
             })
             // ForegroundScreenPowerCost
+            .addMonitor(ForegroundScreenPowerCostMonitor())
             .addMonitorObserver(ForegroundScreenPowerCostMonitor::class.java, object : Monitor.MonitorDataObserver<ForegroundScreenPowerCost> {
                 val TAG = "ForegroundScreenPowerCost"
                 override fun onMonitorDataUpdate(
@@ -63,18 +87,6 @@ class App : Application() {
                     AppLog.d(TAG, t.toString())
                 }
             })
-            // Anr
-            .addMonitorObserver(AnrMonitor::class.java, object : Monitor.MonitorDataObserver<Anr> {
-                val TAG = "Anr"
-                override fun onMonitorDataUpdate(
-                    t: Anr,
-                    apm: tApm
-                ) {
-                    AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTimeMs()}, isSigFromMe: ${t.isSigFromMe}, anrTraceFile=${t.anrTraceFile}")
-                }
-            })
-//            .removeMonitor(NativeCrashMonitor::class.java)
-//            .addMonitor(BreakpadNativeCrashMonitor())
             .setInitCallback(object : InitCallback {
                 val TAG = "ApmInit"
 
