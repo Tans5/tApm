@@ -1,6 +1,6 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.formatDataTime
+import com.tans.tapm.formatDataTimeMs
 import com.tans.tapm.toHumanReadablePower
 
 data class ForegroundScreenPowerCost(
@@ -10,6 +10,6 @@ data class ForegroundScreenPowerCost(
 ) {
 
     override fun toString(): String {
-        return "StartTime=${startTimeInMillis.formatDataTime()}, EndTime=${endTimeInMillis.formatDataTime()}, PowerCost=${powerCostInMah.toHumanReadablePower()}"
+        return "StartTime=${startTimeInMillis.formatDataTimeMs()}, EndTime=${endTimeInMillis.formatDataTimeMs()}, PowerCost=${powerCostInMah.toHumanReadablePower()}"
     }
 }

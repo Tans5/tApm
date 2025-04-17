@@ -26,7 +26,7 @@ void formatTime(int64_t timeInMillis, char *outputBuffer, int outputBufferSize) 
     auto timeOffsetInHours = (int) (timeOffsetInSeconds / 3600);
     auto timeOffsetInMinus = (int) (timeOffsetInSeconds % 3600);
 
-    snprintf(outputBuffer, outputBufferSize, "%s.%03dZ%+03d:%02d", dataTime, millis, timeOffsetInHours, timeOffsetInMinus);
+    snprintf(outputBuffer, outputBufferSize, "%s.%03d%+03d:%02d", dataTime, millis, timeOffsetInHours, timeOffsetInMinus);
 }
 
 void formatTimeNow(char *outputBuffer, int outputBufferSize) {

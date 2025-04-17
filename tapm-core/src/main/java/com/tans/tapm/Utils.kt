@@ -1,7 +1,10 @@
 package com.tans.tapm
 
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.max
 
 fun Long.toHumanReadableCpuSpeed(): String {
     return String.format(Locale.US,"%.2f GHz", this.toDouble() / 1_000_000.0)
@@ -49,7 +52,7 @@ private val sdfDateTimeMs: SimpleDateFormat
     get() {
         return sdfDateTimeMsThreadLocal.get().let {
             if (it == null) {
-                val f = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+                val f = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US)
                 sdfDateTimeMsThreadLocal.set(f)
                 f
             } else {
@@ -58,6 +61,42 @@ private val sdfDateTimeMs: SimpleDateFormat
         }
     }
 
-fun Long.formatDataTime(): String {
+fun Long.formatDataTimeMs(): String {
     return sdfDateTimeMs.format(this)
+}
+
+private val sdfDateTimeMsZoomThreadLocal: ThreadLocal<SimpleDateFormat> by lazy {
+    ThreadLocal()
+}
+
+private val dsfDataTimeMsZoom: SimpleDateFormat
+    get() {
+        return sdfDateTimeMsZoomThreadLocal.get().let {
+            if (it == null) {
+                val f = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US)
+                sdfDateTimeMsThreadLocal.set(f)
+                f
+            } else {
+                it
+            }
+        }
+    }
+
+fun Long.formatDataTimeMsZoom(): String {
+    return dsfDataTimeMsZoom.format(this)
+}
+
+fun Throwable.convertToStrings(): List<String> {
+    val outputStream = ByteArrayOutputStream(64)
+    val printStream = PrintStream(outputStream, true, "UTF-8")
+    printStackTrace(printStream)
+    val s = String(outputStream.toByteArray(), Charsets.UTF_8)
+    val lines = s.lines().let {
+        if (it.lastOrNull().isNullOrEmpty()) {
+            it.take(max( it.size - 1, 0))
+        } else {
+            it
+        }
+    }
+    return lines
 }

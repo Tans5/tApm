@@ -1,14 +1,15 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.formatDataTime
+import com.tans.tapm.formatDataTimeMs
 
 data class JavaCrash(
     val time: Long,
     val thread: Thread,
     val error: Throwable,
-    val otherThreadsStacks: Map<Thread, Array<StackTraceElement>>
+    val otherThreadsStacks: Map<Thread, Array<StackTraceElement>?>,
+    val crashTraceFilePath: String?
 ) {
     override fun toString(): String {
-        return "ErrorTime=${time.formatDataTime()}, ThreadName=${error.message}"
+        return "ErrorTime=${time.formatDataTimeMs()}, ThreadName=${error.message}"
     }
 }

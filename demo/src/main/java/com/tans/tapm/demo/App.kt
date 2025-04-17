@@ -3,8 +3,7 @@ package com.tans.tapm.demo
 import android.app.Application
 import com.tans.tapm.InitCallback
 import com.tans.tapm.Monitor
-import com.tans.tapm.breakpad.BreakpadNativeCrashMonitor
-import com.tans.tapm.formatDataTime
+import com.tans.tapm.formatDataTimeMs
 import com.tans.tapm.model.Anr
 import com.tans.tapm.model.CpuPowerCost
 import com.tans.tapm.model.CpuUsage
@@ -15,14 +14,9 @@ import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
-import com.tans.tapm.monitors.NativeCrashMonitor
 import com.tans.tapm.tApm
 import com.tans.tapm.toHumanReadablePercent
-import com.tans.tlrucache.disk.DiskLruCache
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 class App : Application() {
 
@@ -46,7 +40,7 @@ class App : Application() {
                     t: CpuUsage,
                     apm: tApm
                 ) {
-                    AppLog.d(TAG, "Start: ${t.startTimeInMillis.formatDataTime()}, End: ${t.endTimeInMillis.formatDataTime()} CpuUsage: ${t.avgCpuUsage.toHumanReadablePercent()}, CurrentProcessCpuUsage: ${t.currentProcessAvgCpuUsage.toHumanReadablePercent()}")
+                    AppLog.d(TAG, "Start: ${t.startTimeInMillis.formatDataTimeMs()}, End: ${t.endTimeInMillis.formatDataTimeMs()} CpuUsage: ${t.avgCpuUsage.toHumanReadablePercent()}, CurrentProcessCpuUsage: ${t.currentProcessAvgCpuUsage.toHumanReadablePercent()}")
                 }
             })
             // CpuPowerCost
@@ -76,7 +70,7 @@ class App : Application() {
                     t: Anr,
                     apm: tApm
                 ) {
-                    AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTime()}, isSigFromMe: ${t.isSigFromMe}, anrTraceFile=${t.anrTraceFile}")
+                    AppLog.e(TAG, "Receive anr signal, time=${t.time.formatDataTimeMs()}, isSigFromMe: ${t.isSigFromMe}, anrTraceFile=${t.anrTraceFile}")
                 }
             })
 //            .removeMonitor(NativeCrashMonitor::class.java)

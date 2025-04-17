@@ -1,6 +1,6 @@
 package com.tans.tapm.model
 
-import com.tans.tapm.formatDataTime
+import com.tans.tapm.formatDataTimeMs
 import com.tans.tapm.toHumanReadableCpuSpeed
 import com.tans.tapm.toHumanReadableHours
 import com.tans.tapm.toHumanReadablePower
@@ -15,7 +15,7 @@ data class CpuPowerCost(
     override fun toString(): String {
         val s = StringBuilder()
         s.appendLine("------------------------------------------")
-        s.appendLine("StartTime=${startTimeInMillis.formatDataTime()}, EndTime=${endTimeInMillis.formatDataTime()}")
+        s.appendLine("StartTime=${startTimeInMillis.formatDataTimeMs()}, EndTime=${endTimeInMillis.formatDataTimeMs()}")
         s.appendLine("PowerCost=${powerCostInMah.toHumanReadablePower()}, CurrentProcessPowerCost=${currentProcessPowerCostInMah.toHumanReadablePower()}")
         for (clusterCost in powerCostDetails) {
             s.appendLine("  Cluster=${clusterCost.coreIndexRange}, PowerCost=${clusterCost.powerCostInMah.toHumanReadablePower()}, CoreCount=${clusterCost.coreIndexRange.last - clusterCost.coreIndexRange.first + 1}, ActiveTime=${clusterCost.activeTimeInHour.toHumanReadableHours()}")
