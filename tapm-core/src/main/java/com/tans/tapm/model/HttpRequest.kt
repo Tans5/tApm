@@ -2,6 +2,7 @@ package com.tans.tapm.model
 
 import com.tans.tapm.convertToStrings
 import com.tans.tapm.formatDataTimeMsZoom
+import org.json.JSONObject
 
 sealed class HttpRequest {
     data class TimeCost(
@@ -35,7 +36,7 @@ sealed class HttpRequest {
                 s.appendLine("Header:")
                 for ((k, vs) in requestHeader) {
                     for (v in vs) {
-                        s.appendLine("  $k:$v")
+                        s.appendLine("  $k: $v")
                     }
                 }
             }
@@ -67,7 +68,7 @@ sealed class HttpRequest {
                     s.appendLine("Header:")
                     for ((k, vs) in responseHeader) {
                         for (v in vs) {
-                            s.appendLine("  $k:$v")
+                            s.appendLine("  $k: $v")
                         }
                     }
                 }

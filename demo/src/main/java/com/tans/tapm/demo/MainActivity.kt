@@ -1,7 +1,6 @@
 package com.tans.tapm.demo
 
 import android.view.View
-import com.tans.tapm.breakpad.BreakpadNativeCrashMonitor
 import com.tans.tapm.demo.databinding.MainActivityBinding
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
@@ -61,7 +60,7 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
             try {
                 val client = (application as App).okHttpClient
                 val request = Request.Builder()
-                    .post("\"{ \"name\": \"{\"message\":\"Problems parsing JSON\",\"documentation_url\":\"https://docs.github.com/rest/repos/repos#update-a-repository\",\"status\":\"400\"}\" }\"".toRequestBody("application/json".toMediaTypeOrNull()))
+                    .post("\"{ \"name\": \"Tans5\" }".toRequestBody("application/json".toMediaTypeOrNull()))
                     .url("https://api.github.com/repos/tans5/tapm?name=Tans5")
                     .build()
                 val call = client.newCall(request)

@@ -18,11 +18,11 @@ import okio.BufferedSource
 import okio.GzipSource
 import okio.buffer
 import okio.source
+import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.mutableMapOf
-import kotlin.system.measureTimeMillis
 
 class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
@@ -79,11 +79,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             if (realRequestBody != null && realRequestBody.contentLength() > 0) {
                 val wrapperRequestBody = WrapperRequestBody(
                     realRequestBody = realRequestBody,
-                    bodyWriteStart = { requestBodyText ->
-                        requesting.requestBodyText = requestBodyText
-                    },
-                    bodyWriteEnd = {
-                    }
+                    requesting = requesting
                 )
                 wrapperRequest = realRequest.newBuilder()
                     .method(realRequest.method, wrapperRequestBody)
@@ -151,8 +147,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
     private inner class WrapperRequestBody(
         private val realRequestBody: RequestBody,
-        private val bodyWriteStart: (textBody: String?) -> Unit,
-        private val bodyWriteEnd: () -> Unit
+        private val requesting: Requesting,
     ) : RequestBody() {
 
         override fun contentType(): MediaType? = realRequestBody.contentType()
@@ -161,14 +156,17 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             if (realRequestBody.contentType().isTextType()) {
                 val buffer = Buffer()
                 realRequestBody.writeTo(buffer)
-                val s = buffer.peek().readUtf8()
-                bodyWriteStart(s)
+                val s = buffer.peek().readUtf8().let {
+                    if (realRequestBody.contentType().isJsonType()) {
+                        it.beautifyJsonString()
+                    } else {
+                        it
+                    }
+                }
+                requesting.requestBodyText = s
                 sink.writeAll(buffer)
-                bodyWriteEnd()
             } else {
-                bodyWriteStart(null)
                 realRequestBody.writeTo(sink)
-                bodyWriteEnd()
             }
         }
     }
@@ -207,6 +205,12 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                         requesting.responseBodyText = try {
                             GzipSource(ByteArrayInputStream(bodyBuffer).source()).use {
                                 it.buffer().readUtf8()
+                            }.let {
+                                if (realResponseBody.contentType().isJsonType()) {
+                                    it.beautifyJsonString()
+                                } else {
+                                    it
+                                }
                             }
                         } catch (e: Throwable) {
                             tApmLog.e(TAG, "Read gzip fail: ${e.message}", e)
@@ -276,6 +280,26 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             }
         } else {
             false
+        }
+    }
+
+    private fun MediaType?.isJsonType(): Boolean {
+        return if (this != null) {
+            val type = toString().lowercase()
+            when {
+                type.startsWith("application/json") -> true
+                else -> false
+            }
+        } else {
+            false
+        }
+    }
+
+    private fun String.beautifyJsonString(): String {
+        return try {
+            JSONObject(this).toString(2)
+        } catch (e: Throwable) {
+            this
         }
     }
 
