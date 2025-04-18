@@ -27,10 +27,10 @@ class App : Application() {
 
     val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .addInterceptor(HttpRequestMonitor)
             .addInterceptor(HttpLoggingInterceptor { s ->
                 AppLog.d("HttpLogging", s)
             }.apply { setLevel(HttpLoggingInterceptor.Level.BODY) })
+            .addNetworkInterceptor(HttpRequestMonitor)
             .build()
     }
 
