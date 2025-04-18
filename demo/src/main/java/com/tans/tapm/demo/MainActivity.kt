@@ -62,7 +62,7 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
                 val client = (application as App).okHttpClient
                 val request = Request.Builder()
                     .post("\"{ \"name\": \"Tans5\" }\"".toRequestBody("application/json".toMediaTypeOrNull()))
-                    .url("https://api.github.com/repos/tans5/tapm")
+                    .url("https://api.github.com/repos/tans5/tapm?name=Tans5")
                     .build()
                 val call = client.newCall(request)
                 val response = call.execute()

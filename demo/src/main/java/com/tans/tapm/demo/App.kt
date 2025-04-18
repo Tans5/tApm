@@ -8,6 +8,7 @@ import com.tans.tapm.model.Anr
 import com.tans.tapm.model.CpuPowerCost
 import com.tans.tapm.model.CpuUsage
 import com.tans.tapm.model.ForegroundScreenPowerCost
+import com.tans.tapm.model.HttpRequest
 import com.tans.tapm.model.JavaCrash
 import com.tans.tapm.model.NativeCrash
 import com.tans.tapm.monitors.AnrMonitor
@@ -101,6 +102,16 @@ class App : Application() {
             })
             // Http Monitor
             .addMonitor(HttpRequestMonitor())
+            .addMonitorObserver(HttpRequestMonitor::class.java, object : Monitor.MonitorDataObserver<HttpRequest> {
+                val TAG = "HttpMonitor"
+                override fun onMonitorDataUpdate(
+                    t: HttpRequest,
+                    apm: tApm
+                ) {
+                    AppLog.d(TAG, t.toString())
+                }
+
+            })
             .setInitCallback(object : InitCallback {
                 val TAG = "ApmInit"
 

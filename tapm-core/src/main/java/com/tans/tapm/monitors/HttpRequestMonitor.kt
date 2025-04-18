@@ -100,9 +100,10 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
             // Response
             requesting.isHttpSuccess = realResponse.isSuccessful
+            requesting.responseHeader = realResponse.headers.toMultimap()
             requesting.responseCode = realResponse.code
             requesting.responseBodyContentType = realResponse.body?.contentType()?.toString()
-            requesting.responseBodyContentLength = realRequest.body?.contentLength()
+            requesting.responseBodyContentLength = realResponse.body?.contentLength()
             val realResponseBody = realResponse.body
             val wrapperResponse: Response
             if (realResponseBody != null && realResponseBody.contentLength() > 0) {
@@ -279,7 +280,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                 url = requesting.url,
                 queryParams = requesting.queryParams,
                 requestHeader = requesting.requestHeader,
-                requestBodyContentType = requesting.responseBodyText,
+                requestBodyContentType = requesting.requestBodyText,
                 requestBodyContentLength = requesting.requestBodyContentLength,
                 requestBodyText = requesting.requestBodyText,
                 requestHeaderCostInMillis = requesting.requestHeaderCostInMillis,
@@ -290,7 +291,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                 responseBodyContentLength = requesting.responseBodyContentLength,
                 responseBodyText = requesting.responseBodyText,
                 isHttpSuccess = requesting.isHttpSuccess,
-                responseHeaderCostInMillis = requesting.requestHeaderCostInMillis,
+                responseHeaderCostInMillis = requesting.responseHeaderCostInMillis,
                 responseBodyCostInMillis = requesting.responseBodyCostInMillis,
                 httpRequestCostInMillis = requesting.httpRequestCostInMillis,
                 error = requesting.error
