@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.mutableMapOf
+import kotlin.system.measureTimeMillis
 
 class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
@@ -47,8 +48,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             startTime = System.currentTimeMillis(),
         )
         val requestStartTime = SystemClock.uptimeMillis()
-        var requestHeaderEndTime: Long = -1L
-        var requestBodyEndTime: Long = -1L
         return try {
             val realRequest = chain.request()
             requesting.method = realRequest.method
@@ -82,12 +81,8 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                     realRequestBody = realRequestBody,
                     bodyWriteStart = { requestBodyText ->
                         requesting.requestBodyText = requestBodyText
-                        requestHeaderEndTime = SystemClock.uptimeMillis()
-                        requesting.requestHeaderCostInMillis = requestHeaderEndTime - requestStartTime
                     },
                     bodyWriteEnd = {
-                        requestBodyEndTime = SystemClock.uptimeMillis()
-                        requesting.requestBodyCostInMillis = requestBodyEndTime - requestHeaderEndTime
                     }
                 )
                 wrapperRequest = realRequest.newBuilder()
@@ -96,7 +91,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             } else {
                 wrapperRequest = realRequest
             }
-            val realResponse = chain.proceed(chain.request())
+            val realResponse = chain.proceed(wrapperRequest)
 
             // Response
             requesting.isHttpSuccess = realResponse.isSuccessful
@@ -114,19 +109,19 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                             realResponseBody = realResponseBody,
                             requesting = requesting,
                             requestStartTime = requestStartTime,
-                            requestHeaderEndTime = requestHeaderEndTime,
-                            requestBodyEndTime = requestBodyEndTime,
                             isGzipEncoding = isGzipEncoding
                         )
                     )
                     .build()
             } else {
+                requesting.httpRequestCostInMillis = SystemClock.uptimeMillis() - requestStartTime
                 dispatchHttpTimeCost(requesting)
                 wrapperResponse = realResponse
             }
             wrapperResponse
         } catch (e: Throwable) {
             requesting.error = e
+            requesting.httpRequestCostInMillis = SystemClock.uptimeMillis() - requestStartTime
             dispatchHttpTimeCost(requesting)
             throw e
         }
@@ -142,8 +137,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         var requestBodyContentType: String? = null,
         var requestBodyContentLength: Long? = null,
         var requestBodyText: String? = null,
-        var requestHeaderCostInMillis: Long? = null,
-        var requestBodyCostInMillis: Long? = null,
 
         var responseHeader: Map<String, List<String>>? = null,
         var responseCode: Int? = null,
@@ -151,8 +144,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         var responseBodyContentLength: Long? = null,
         var responseBodyText: String? = null,
         var isHttpSuccess: Boolean? = null,
-        var responseHeaderCostInMillis: Long? = null,
-        var responseBodyCostInMillis: Long? = null,
 
         var httpRequestCostInMillis: Long = 0,
         var error: Throwable? = null
@@ -186,8 +177,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         val realResponseBody: ResponseBody,
         val requesting: Requesting,
         val requestStartTime: Long,
-        val requestHeaderEndTime: Long,
-        val requestBodyEndTime: Long,
         val isGzipEncoding: Boolean
     ) : ResponseBody() {
 
@@ -197,10 +186,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             null
         }
 
-        private var isRecordBodyStart = false
         private var isRecordBodyEnd = false
-
-        private var responseBodyStartTime = -1L
 
         private var readSize = 0
 
@@ -212,22 +198,10 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             return WrapperInputStream(realResponseBody.source().inputStream()).source().buffer()
         }
 
-        private fun dispatchStart() {
-            if (!isRecordBodyStart) {
-                isRecordBodyStart = true
-                responseBodyStartTime = SystemClock.uptimeMillis()
-                if (requestBodyEndTime != -1L) {
-                    requesting.responseHeaderCostInMillis = responseBodyStartTime - requestBodyEndTime
-                }
-            }
-        }
-
         private fun dispatchEnd(e: Throwable?) {
             if (!isRecordBodyEnd) {
                 isRecordBodyEnd = true
-                val now = SystemClock.uptimeMillis()
-                requesting.responseBodyCostInMillis = now - responseBodyStartTime
-                requesting.httpRequestCostInMillis = now - requestStartTime
+                requesting.httpRequestCostInMillis = SystemClock.uptimeMillis() - requestStartTime
                 if (bodyBuffer != null && readSize.toLong() == contentLength()) {
                     if (isGzipEncoding) {
                         requesting.responseBodyText = try {
@@ -249,9 +223,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
         private inner class WrapperInputStream(val realInputStream: InputStream) : InputStream() {
             override fun read(): Int {
-                if (!isRecordBodyStart) {
-                    dispatchStart()
-                }
                 val readResult = try {
                     realInputStream.read()
                 } catch (e: Throwable) {
@@ -265,7 +236,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                         bodyBuffer[readSize] = readResult.toByte()
                     }
                     readSize ++
-                    // TODO: Record read size.
                 }
                 return readResult
             }
@@ -280,19 +250,15 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                 url = requesting.url,
                 queryParams = requesting.queryParams,
                 requestHeader = requesting.requestHeader,
-                requestBodyContentType = requesting.requestBodyText,
+                requestBodyContentType = requesting.requestBodyContentType,
                 requestBodyContentLength = requesting.requestBodyContentLength,
                 requestBodyText = requesting.requestBodyText,
-                requestHeaderCostInMillis = requesting.requestHeaderCostInMillis,
-                requestBodyCostInMillis = requesting.requestBodyCostInMillis,
                 responseHeader = requesting.responseHeader,
                 responseCode = requesting.responseCode,
                 responseBodyContentType = requesting.responseBodyContentType,
                 responseBodyContentLength = requesting.responseBodyContentLength,
                 responseBodyText = requesting.responseBodyText,
                 isHttpSuccess = requesting.isHttpSuccess,
-                responseHeaderCostInMillis = requesting.responseHeaderCostInMillis,
-                responseBodyCostInMillis = requesting.responseBodyCostInMillis,
                 httpRequestCostInMillis = requesting.httpRequestCostInMillis,
                 error = requesting.error
             )

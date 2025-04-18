@@ -14,8 +14,6 @@ sealed class HttpRequest {
         val requestBodyContentType: String?,
         val requestBodyContentLength: Long?,
         val requestBodyText: String?,
-        val requestHeaderCostInMillis: Long?,
-        val requestBodyCostInMillis: Long?,
 
         val responseHeader: Map<String, List<String>>?,
         val responseCode: Int?,
@@ -23,8 +21,7 @@ sealed class HttpRequest {
         val responseBodyContentLength: Long?,
         val responseBodyText: String?,
         val isHttpSuccess: Boolean?,
-        val responseHeaderCostInMillis: Long?,
-        val responseBodyCostInMillis: Long?,
+
 
         val httpRequestCostInMillis: Long,
         val error: Throwable?
@@ -35,12 +32,7 @@ sealed class HttpRequest {
             s.appendLine("Http Start: $method $url($httpRequestCostInMillis ms, ${startTime.formatDataTimeMsZoom()})")
             s.appendLine("--> Request Start")
             if (requestHeader.isNotEmpty()) {
-                s.append("Header")
-                if (requestHeaderCostInMillis != null) {
-                    s.appendLine("(${requestHeaderCostInMillis} ms):")
-                } else {
-                    s.appendLine(":")
-                }
+                s.appendLine("Header:")
                 for ((k, vs) in requestHeader) {
                     for (v in vs) {
                         s.appendLine("  $k:$v")
@@ -62,9 +54,6 @@ sealed class HttpRequest {
                 if (requestBodyContentType != null) {
                     s.append(", $requestBodyContentType")
                 }
-                if (requestBodyCostInMillis != null) {
-                    s.append(", $requestBodyCostInMillis ms")
-                }
                 s.appendLine("):")
                 if (requestBodyText != null) {
                     s.appendLine(requestBodyText)
@@ -75,12 +64,7 @@ sealed class HttpRequest {
             if (responseHeader != null) {
                 s.appendLine("\n<-- Response Start")
                 if (responseHeader.isNotEmpty()) {
-                    s.append("Header")
-                    if (responseHeaderCostInMillis != null) {
-                        s.appendLine("(${responseHeaderCostInMillis} ms):")
-                    } else {
-                        s.appendLine(":")
-                    }
+                    s.appendLine("Header:")
                     for ((k, vs) in responseHeader) {
                         for (v in vs) {
                             s.appendLine("  $k:$v")
@@ -93,9 +77,6 @@ sealed class HttpRequest {
                     s.append("$responseBodyContentLength bytes")
                     if (responseBodyContentType != null) {
                         s.append(", $responseBodyContentType")
-                    }
-                    if (responseBodyCostInMillis != null) {
-                        s.append(", $responseBodyCostInMillis ms")
                     }
                     s.appendLine("):")
                     if (responseBodyText != null) {
