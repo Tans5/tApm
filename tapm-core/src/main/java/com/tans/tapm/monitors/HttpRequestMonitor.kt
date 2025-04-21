@@ -176,7 +176,9 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
         override fun writeTo(sink: BufferedSink) {
             val realOutputStream = sink.outputStream()
-            realRequestBody.writeTo(WrapperOutputStream(realOutputStream).sink().buffer())
+            val wrapperSink = WrapperOutputStream(realOutputStream).sink().buffer()
+            realRequestBody.writeTo(wrapperSink)
+            wrapperSink.flush()
         }
 
         fun dispatchEnd() {
