@@ -2,7 +2,6 @@ package com.tans.tapm.model
 
 import com.tans.tapm.convertToStrings
 import com.tans.tapm.formatDataTimeMsZoom
-import org.json.JSONObject
 
 sealed class HttpRequest {
     data class TimeCost(
@@ -14,12 +13,14 @@ sealed class HttpRequest {
         val requestHeader: Map<String, List<String>>,
         val requestBodyContentType: String?,
         val requestBodyContentLength: Long?,
+        val requestBodyWriteSize: Long?,
         val requestBodyText: String?,
 
         val responseHeader: Map<String, List<String>>?,
         val responseCode: Int?,
         val responseBodyContentType: String?,
         val responseBodyContentLength: Long?,
+        val responseBodyReadSize: Long?,
         val responseBodyText: String?,
         val isHttpSuccess: Boolean?,
 
@@ -55,6 +56,9 @@ sealed class HttpRequest {
                 if (requestBodyContentType != null) {
                     s.append(", $requestBodyContentType")
                 }
+                if (requestBodyWriteSize != null && requestBodyWriteSize > 0) {
+                    s.append(", write $requestBodyWriteSize bytes")
+                }
                 s.appendLine("):")
                 if (requestBodyText != null) {
                     s.appendLine(requestBodyText)
@@ -78,6 +82,9 @@ sealed class HttpRequest {
                     s.append("$responseBodyContentLength bytes")
                     if (responseBodyContentType != null) {
                         s.append(", $responseBodyContentType")
+                    }
+                    if (responseBodyReadSize != null && responseBodyReadSize > 0) {
+                        s.append(", read $responseBodyReadSize bytes")
                     }
                     s.appendLine("):")
                     if (responseBodyText != null) {

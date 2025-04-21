@@ -12,15 +12,16 @@ import okhttp3.Response
 import okhttp3.ResponseBody
 import okhttp3.internal.http.promisesBody
 import okhttp3.internal.toHostHeader
-import okio.Buffer
 import okio.BufferedSink
 import okio.BufferedSource
 import okio.GzipSource
 import okio.buffer
+import okio.sink
 import okio.source
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.mutableMapOf
 
@@ -76,8 +77,9 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             var wrapperRequest: Request
             requesting.requestBodyContentType = realRequestBody?.contentType()?.toString()
             requesting.requestBodyContentLength = realRequestBody?.contentLength()
-            if (realRequestBody != null && realRequestBody.contentLength() > 0) {
-                val wrapperRequestBody = WrapperRequestBody(
+            val wrapperRequestBody: WrapperRequestBody?
+            if (realRequestBody != null) {
+                wrapperRequestBody = WrapperRequestBody(
                     realRequestBody = realRequestBody,
                     requesting = requesting
                 )
@@ -85,9 +87,11 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                     .method(realRequest.method, wrapperRequestBody)
                     .build()
             } else {
+                wrapperRequestBody = null
                 wrapperRequest = realRequest
             }
             val realResponse = chain.proceed(wrapperRequest)
+            wrapperRequestBody?.dispatchEnd()
 
             // Response
             requesting.isHttpSuccess = realResponse.isSuccessful
@@ -97,7 +101,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             requesting.responseBodyContentLength = realResponse.body?.contentLength()
             val realResponseBody = realResponse.body
             val wrapperResponse: Response
-            if (realResponseBody != null && realResponseBody.contentLength() > 0) {
+            if (realResponseBody != null) {
                 val isGzipEncoding = "gzip".equals(realResponse.header("Content-Encoding"), ignoreCase = true) && realResponse.promisesBody()
                 wrapperResponse = realResponse.newBuilder()
                     .body(
@@ -132,17 +136,21 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         var requestHeader: Map<String, List<String>> = emptyMap(),
         var requestBodyContentType: String? = null,
         var requestBodyContentLength: Long? = null,
+        var requestBodyWriteSize: Long? = null,
         var requestBodyText: String? = null,
 
         var responseHeader: Map<String, List<String>>? = null,
         var responseCode: Int? = null,
         var responseBodyContentType: String? = null,
         var responseBodyContentLength: Long? = null,
+        var responseBodyReadSize: Long? = null,
         var responseBodyText: String? = null,
         var isHttpSuccess: Boolean? = null,
 
         var httpRequestCostInMillis: Long = 0,
-        var error: Throwable? = null
+        var error: Throwable? = null,
+
+        var isDispatched: Boolean = false
     )
 
     private inner class WrapperRequestBody(
@@ -150,23 +158,46 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         private val requesting: Requesting,
     ) : RequestBody() {
 
+        private val bodyBuffer: ArrayList<Byte>? = if (contentType().isTextType() && contentLength() <= MAX_HANDLE_BODY_SIZE) {
+            ArrayList<Byte>()
+        } else {
+            null
+        }
+
+        private var writeSize: Long = 0L
+
         override fun contentType(): MediaType? = realRequestBody.contentType()
 
+        override fun contentLength(): Long = realRequestBody.contentLength()
+
+        override fun isDuplex(): Boolean = realRequestBody.isDuplex()
+
+        override fun isOneShot(): Boolean = realRequestBody.isOneShot()
+
         override fun writeTo(sink: BufferedSink) {
-            if (realRequestBody.contentType().isTextType()) {
-                val buffer = Buffer()
-                realRequestBody.writeTo(buffer)
-                val s = buffer.peek().readUtf8().let {
-                    if (realRequestBody.contentType().isJsonType()) {
-                        it.beautifyJsonString()
-                    } else {
-                        it
-                    }
+            val realOutputStream = sink.outputStream()
+            realRequestBody.writeTo(WrapperOutputStream(realOutputStream).sink().buffer())
+        }
+
+        fun dispatchEnd() {
+            requesting.requestBodyWriteSize = writeSize
+            if (bodyBuffer != null && bodyBuffer.isNotEmpty() && writeSize <= MAX_HANDLE_BODY_SIZE) {
+                val s = bodyBuffer.toByteArray().toString(Charsets.UTF_8)
+                if (contentType().isJsonType()) {
+                    requesting.requestBodyText = s.beautifyJsonString()
+                } else {
+                    requesting.requestBodyText = s
                 }
-                requesting.requestBodyText = s
-                sink.writeAll(buffer)
-            } else {
-                realRequestBody.writeTo(sink)
+            }
+        }
+
+        private inner class WrapperOutputStream(private val realOutputStream: OutputStream) : OutputStream() {
+            override fun write(b: Int) {
+                if (writeSize < MAX_HANDLE_BODY_SIZE) {
+                    bodyBuffer?.add(b.toByte())
+                }
+                realOutputStream.write(b)
+                writeSize ++
             }
         }
     }
@@ -178,15 +209,15 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
         val isGzipEncoding: Boolean
     ) : ResponseBody() {
 
-        private val bodyBuffer: ByteArray? = if (realResponseBody.contentType().isTextType()) {
-            ByteArray(contentLength().toInt())
+        private val bodyBuffer: ArrayList<Byte>? = if (contentType().isTextType() && contentLength() <= MAX_HANDLE_BODY_SIZE) {
+            ArrayList<Byte>()
         } else {
             null
         }
 
         private var isRecordBodyEnd = false
 
-        private var readSize = 0
+        private var readSize: Long = 0L
 
         override fun contentLength(): Long = realResponseBody.contentLength()
 
@@ -200,10 +231,11 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             if (!isRecordBodyEnd) {
                 isRecordBodyEnd = true
                 requesting.httpRequestCostInMillis = SystemClock.uptimeMillis() - requestStartTime
-                if (bodyBuffer != null && readSize.toLong() == contentLength()) {
+                requesting.responseBodyReadSize = readSize
+                if (bodyBuffer != null && bodyBuffer.isNotEmpty() && readSize <= MAX_HANDLE_BODY_SIZE) {
                     if (isGzipEncoding) {
                         requesting.responseBodyText = try {
-                            GzipSource(ByteArrayInputStream(bodyBuffer).source()).use {
+                            GzipSource(ByteArrayInputStream(bodyBuffer.toByteArray()).source()).use {
                                 it.buffer().readUtf8()
                             }.let {
                                 if (realResponseBody.contentType().isJsonType()) {
@@ -217,7 +249,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                             null
                         }
                     } else {
-                        requesting.responseBodyText = bodyBuffer.toString(Charsets.UTF_8)
+                        requesting.responseBodyText = bodyBuffer.toByteArray().toString(Charsets.UTF_8)
                     }
                 }
                 requesting.error = e
@@ -233,11 +265,11 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                     dispatchEnd(e)
                     throw e
                 }
-                if (readResult == -1 || readSize >= contentLength()) {
+                if (readResult == -1) {
                     dispatchEnd(null)
                 } else {
-                    if (bodyBuffer != null) {
-                        bodyBuffer[readSize] = readResult.toByte()
+                    if (bodyBuffer != null && readSize < MAX_HANDLE_BODY_SIZE) {
+                        bodyBuffer.add(readResult.toByte())
                     }
                     readSize ++
                 }
@@ -247,26 +279,33 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
     }
 
     private fun dispatchHttpTimeCost(requesting: Requesting) {
-        dispatchMonitorData(
-            HttpRequest.TimeCost(
-                startTime = requesting.startTime,
-                method = requesting.method,
-                url = requesting.url,
-                queryParams = requesting.queryParams,
-                requestHeader = requesting.requestHeader,
-                requestBodyContentType = requesting.requestBodyContentType,
-                requestBodyContentLength = requesting.requestBodyContentLength,
-                requestBodyText = requesting.requestBodyText,
-                responseHeader = requesting.responseHeader,
-                responseCode = requesting.responseCode,
-                responseBodyContentType = requesting.responseBodyContentType,
-                responseBodyContentLength = requesting.responseBodyContentLength,
-                responseBodyText = requesting.responseBodyText,
-                isHttpSuccess = requesting.isHttpSuccess,
-                httpRequestCostInMillis = requesting.httpRequestCostInMillis,
-                error = requesting.error
+        if (!requesting.isDispatched) {
+            requesting.isDispatched = true
+            dispatchMonitorData(
+                HttpRequest.TimeCost(
+                    startTime = requesting.startTime,
+                    method = requesting.method,
+                    url = requesting.url,
+                    queryParams = requesting.queryParams,
+                    requestHeader = requesting.requestHeader,
+                    requestBodyContentType = requesting.requestBodyContentType,
+                    requestBodyContentLength = requesting.requestBodyContentLength,
+                    requestBodyWriteSize = requesting.requestBodyWriteSize,
+                    requestBodyText = requesting.requestBodyText,
+
+                    responseHeader = requesting.responseHeader,
+                    responseCode = requesting.responseCode,
+                    responseBodyContentType = requesting.responseBodyContentType,
+                    responseBodyContentLength = requesting.responseBodyContentLength,
+                    responseBodyReadSize = requesting.responseBodyReadSize,
+                    responseBodyText = requesting.responseBodyText,
+
+                    isHttpSuccess = requesting.isHttpSuccess,
+                    httpRequestCostInMillis = requesting.httpRequestCostInMillis,
+                    error = requesting.error
+                )
             )
-        )
+        }
     }
 
     private fun MediaType?.isTextType(): Boolean {
@@ -306,6 +345,8 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
     companion object : Interceptor {
 
         private const val TAG = "HttpRequestMonitor"
+
+        private const val MAX_HANDLE_BODY_SIZE = 1024 * 1024 * 64 // 64MB
 
         private val monitor: AtomicReference<HttpRequestMonitor?> by lazy {
             AtomicReference(null)
