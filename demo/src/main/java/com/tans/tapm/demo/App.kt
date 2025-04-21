@@ -22,16 +22,13 @@ import com.tans.tapm.tApm
 import com.tans.tapm.toHumanReadablePercent
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 
 class App : Application() {
 
     val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor { s ->
-                AppLog.d("HttpLogging", s)
-            }.apply { setLevel(HttpLoggingInterceptor.Level.BODY) })
-            .addNetworkInterceptor(HttpRequestMonitor)
+            .addInterceptor(HttpRequestMonitor)
+            // .addNetworkInterceptor(HttpRequestMonitor)
             .build()
     }
 

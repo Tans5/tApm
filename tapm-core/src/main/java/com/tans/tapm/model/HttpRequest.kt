@@ -49,16 +49,18 @@ sealed class HttpRequest {
                     }
                 }
             }
-            if (requestBodyContentLength != null && requestBodyContentLength > 0) {
+            if (requestBodyWriteSize != null && requestBodyWriteSize > 0) {
                 s.append("Body")
                 s.append("(")
-                s.append("$requestBodyContentLength bytes")
                 if (requestBodyContentType != null) {
-                    s.append(", $requestBodyContentType")
+                    s.append(requestBodyContentType)
+                } else {
+                    s.append("unknown content type")
                 }
-                if (requestBodyWriteSize != null && requestBodyWriteSize > 0) {
-                    s.append(", write $requestBodyWriteSize bytes")
+                if (requestBodyContentLength != null && requestBodyContentLength > 0) {
+                    s.append(", $requestBodyContentLength bytes")
                 }
+                s.append(", write $requestBodyWriteSize bytes")
                 s.appendLine("):")
                 if (requestBodyText != null) {
                     s.appendLine(requestBodyText)
@@ -76,16 +78,18 @@ sealed class HttpRequest {
                         }
                     }
                 }
-                if (responseBodyContentLength != null && responseBodyContentLength > 0) {
+                if (responseBodyReadSize != null && responseBodyReadSize > 0) {
                     s.append("Body")
                     s.append("(")
-                    s.append("$responseBodyContentLength bytes")
                     if (responseBodyContentType != null) {
-                        s.append(", $responseBodyContentType")
+                        s.append(responseBodyContentType)
+                    } else {
+                        s.append("unknown content type")
                     }
-                    if (responseBodyReadSize != null && responseBodyReadSize > 0) {
-                        s.append(", read $responseBodyReadSize bytes")
+                    if (responseBodyContentLength != null && responseBodyContentLength > 0) {
+                        s.append("$responseBodyContentLength bytes")
                     }
+                    s.append(", read $responseBodyReadSize bytes")
                     s.appendLine("):")
                     if (responseBodyText != null) {
                         s.appendLine(responseBodyText)

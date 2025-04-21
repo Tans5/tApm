@@ -240,7 +240,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                             GzipSource(ByteArrayInputStream(bodyBuffer.toByteArray()).source()).use {
                                 it.buffer().readUtf8()
                             }.let {
-                                if (realResponseBody.contentType().isJsonType()) {
+                                if (contentType().isJsonType()) {
                                     it.beautifyJsonString()
                                 } else {
                                     it
@@ -251,7 +251,12 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
                             null
                         }
                     } else {
-                        requesting.responseBodyText = bodyBuffer.toByteArray().toString(Charsets.UTF_8)
+                        val s = bodyBuffer.toByteArray().toString(Charsets.UTF_8)
+                        requesting.responseBodyText = if (contentType().isJsonType()) {
+                            s.beautifyJsonString()
+                        } else {
+                            s
+                        }
                     }
                 }
                 requesting.error = e
