@@ -1,6 +1,7 @@
 package com.tans.tapm.demo
 
 import android.view.View
+import com.tans.tapm.autoinit.AutoInit
 import com.tans.tapm.demo.databinding.MainActivityBinding
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
@@ -25,17 +26,17 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MainActivityBinding.bind(contentView)
         viewBinding.testJavaCrashBt.clicks(this) {
-            (application as App).apm.getMonitor(JavaCrashMonitor::class.java)?.testJavaCrash()
+            AutoInit.getApm()?.getMonitor(JavaCrashMonitor::class.java)?.testJavaCrash()
         }
         viewBinding.blockMainThreadBt.clicks(this) {
             Thread.sleep(8_000)
         }
         viewBinding.testNativeCrashBt.clicks(this) {
-            (application as App).apm.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
+            AutoInit.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
         }
         viewBinding.testNativeCrashNewThreadBt.clicks(this) {
             Thread {
-                (application as App).apm.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
+                AutoInit.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
             }.start()
         }
         viewBinding.httpGetBt.clicks(this, clickWorkOn = Dispatchers.IO) {

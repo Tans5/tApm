@@ -12,7 +12,7 @@ android {
     defaultConfig {
         minSdk = properties["ANDROID_MIN_SDK"].toString().toInt()
 
-        setProperty("archivesBaseName", "tlog-${properties["VERSION_NAME"].toString()}")
+        setProperty("archivesBaseName", "${project.name}-${properties["VERSION_NAME"].toString()}")
         buildConfigField("String", "VERSION", "\"${properties["VERSION_NAME"].toString()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

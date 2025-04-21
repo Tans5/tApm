@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.tlrucatch)
     implementation(project(":tapm-core"))
     implementation(project(":tapm-breakpad"))
+    implementation(project(":tapm-autoinit"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

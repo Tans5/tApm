@@ -1,8 +1,9 @@
 package com.tans.tapm.demo
 
 import android.app.Application
-import com.tans.tapm.InitCallback
+import android.content.Context
 import com.tans.tapm.Monitor
+import com.tans.tapm.autoinit.AutoInit
 import com.tans.tapm.formatDataTimeMs
 import com.tans.tapm.model.Anr
 import com.tans.tapm.model.CpuPowerCost
@@ -32,18 +33,20 @@ class App : Application() {
             .build()
     }
 
-    val apm: tApm by lazy {
-        tApm.Companion.Builder(this)
+    override fun attachBaseContext(base: Context?) {
+        super.attachBaseContext(base)
+        AutoInit.addBuilderInterceptor { builder ->
+            builder
             // JavaCrash
             .addMonitorObserver(JavaCrashMonitor::class.java, object : Monitor.MonitorDataObserver<JavaCrash> {
-                val TAG = "JavaCrash"
-                override fun onMonitorDataUpdate(
-                    t: JavaCrash,
-                    apm: tApm
-                ) {
-                    AppLog.e(TAG, "JavaCrashed: ${t.error.message}, TraceFile: ${t.crashTraceFilePath}")
-                }
-            })
+            val TAG = "JavaCrash"
+            override fun onMonitorDataUpdate(
+                t: JavaCrash,
+                apm: tApm
+            ) {
+                AppLog.e(TAG, "JavaCrashed: ${t.error.message}, TraceFile: ${t.crashTraceFilePath}")
+            }
+        })
             // NativeCrash
             .addMonitorObserver(NativeCrashMonitor::class.java, object : Monitor.MonitorDataObserver<NativeCrash> {
                 val TAG = "NativeCrash"
@@ -107,33 +110,17 @@ class App : Application() {
                 ) {
                     AppLog.d(TAG, t.toString())
                 }
-
             })
-            .setInitCallback(object : InitCallback {
-                val TAG = "ApmInit"
+        }
 
-                override fun onSupportMonitor(monitor: Monitor<*>) {
-                    AppLog.d(TAG, "Support: ${monitor::class.java}")
-                }
-
-                override fun onUnsupportMonitor(monitor: Monitor<*>) {
-                    AppLog.e(TAG, "UnSupport: ${monitor::class.java}")
-                }
-
-                override fun onInitFinish() {
-                    AppLog.d(TAG, "Init tApm finished.")
-                }
-            })
-            .build()
-            .apply {
-                getMonitor(CpuUsageMonitor::class.java)?.setMonitorInterval(1000L * 60L * 5L)
-            }
+        AutoInit.addInitFinishListener {
+            it.getMonitor(CpuUsageMonitor::class.java)?.setMonitorInterval(1000L * 60L * 5L)
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
         AppLog.init(this)
         AutoApplySystemBarAnnotation.init(this)
-        apm
     }
 }

@@ -9,6 +9,7 @@ appcompat = "1.7.0"
 material = "1.12.0"
 corouines = "1.10.1"
 androidx-annotaion = "1.9.1"
+androidx-startup = "1.2.0"
 okhttp3 = "4.12.0"
 tuiutils = "1.1.1"
 tlog = "1.0.1"
@@ -30,6 +31,7 @@ okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
 tlrucatch = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
+androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidx-startup" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

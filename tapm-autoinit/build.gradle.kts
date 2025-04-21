@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.tans.tapm"
+    namespace = "com.tans.tapm.autoinit"
     compileSdk = properties["ANDROID_COMPILE_SDK"].toString().toInt()
 
     defaultConfig {
@@ -19,29 +19,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
-
-        ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
-        }
     }
-
-    externalNativeBuild {
-        cmake {
-            path("src/main/cpp/CMakeLists.txt")
-            version = properties["CMAKE_VERSION"].toString()
-        }
-    }
-
-    ndkVersion = properties["NDK_VERSION"].toString()
 
     buildTypes {
-        debug {
-            packaging {
-                jniLibs {
-                    keepDebugSymbols += listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so")
-                }
-            }
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -64,7 +44,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.annotaion)
-    implementation(libs.okhttp3)
+    implementation(libs.androidx.startup.runtime)
+    implementation(project(":tapm-core"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
