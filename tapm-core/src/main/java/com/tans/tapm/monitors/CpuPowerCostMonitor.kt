@@ -38,7 +38,7 @@ class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERN
                         val lastPowerCost = lastPowerCostFromUptime.get()
                         if (lastPowerCost != null) {
                             val durationCpuPowerCost = calculateCpuPowerCostBetweenTwoPoint(lastPowerCost, powerCost)
-                            tApmLog.d(TAG, durationCpuPowerCost.toString())
+                            // tApmLog.d(TAG, durationCpuPowerCost.toString())
                             dispatchMonitorData(durationCpuPowerCost)
                         }
                         lastPowerCostFromUptime.set(powerCost)

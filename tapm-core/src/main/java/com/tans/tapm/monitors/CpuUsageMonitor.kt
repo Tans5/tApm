@@ -34,7 +34,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
                 }
 
                 val cpuUsage = calculateCpuUsage(lastCpuState, currentCpuState)
-                tApmLog.d(TAG, cpuUsage.toString())
+                // tApmLog.d(TAG, cpuUsage.toString())
                 lastCpuStateSnapshot.set(currentCpuState)
                 sendNextTimeCheckTask()
                 dispatchMonitorData(cpuUsage)

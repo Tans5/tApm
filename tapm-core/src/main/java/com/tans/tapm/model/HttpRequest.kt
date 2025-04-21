@@ -1,10 +1,13 @@
 package com.tans.tapm.model
 
 import com.tans.tapm.convertToStrings
+import com.tans.tapm.formatDataTimeMs
 import com.tans.tapm.formatDataTimeMsZoom
+import com.tans.tapm.toHumanReadableMemorySize
 
 sealed class HttpRequest {
-    data class TimeCost(
+
+    data class SingleRequestRecord(
         val startTime: Long,
         val method: String,
         val url: String,
@@ -87,7 +90,7 @@ sealed class HttpRequest {
                         s.append("unknown content type")
                     }
                     if (responseBodyContentLength != null && responseBodyContentLength > 0) {
-                        s.append("$responseBodyContentLength bytes")
+                        s.append(", $responseBodyContentLength bytes")
                     }
                     s.append(", read $responseBodyReadSize bytes")
                     s.appendLine("):")
@@ -110,6 +113,38 @@ sealed class HttpRequest {
             }
             s.append("Http End")
             return s.toString()
+        }
+    }
+
+    data class HttpRequestsSummary(
+        val dataUploadSize: Long,
+        val dataDownloadSize: Long,
+        val requests: List<SingleRequestInfo>,
+        val speedCalculateStartTime: Long,
+        val speedCalculateEndTime: Long,
+        // bytes pre second
+        val uploadSpeed: Long,
+        // bytes pre second
+        val downloadSpeed: Long
+    ) : HttpRequest() {
+
+        override fun toString(): String {
+            val s = StringBuilder()
+            s.appendLine("Start=${speedCalculateStartTime.formatDataTimeMs()}, End=${speedCalculateEndTime.formatDataTimeMs()}, UploadSpeed=${uploadSpeed.toHumanReadableMemorySize()}/S, DownloadSpeed=${downloadSpeed.toHumanReadableMemorySize()}/S")
+            s.appendLine("UploadSize=${dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${dataDownloadSize.toHumanReadableMemorySize()}")
+            for (r in requests) {
+                s.appendLine("  Key=${r.key}, UploadSize=${r.dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${r.dataDownloadSize.toHumanReadableMemorySize()}, RequestTimes=${r.requestTimes}")
+            }
+            return s. toString()
+        }
+
+        companion object {
+            data class SingleRequestInfo(
+                val key: String,
+                val dataUploadSize: Long,
+                val dataDownloadSize: Long,
+                val requestTimes: Int
+            )
         }
     }
 }

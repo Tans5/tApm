@@ -197,7 +197,7 @@ class ForegroundScreenPowerCostMonitor : AbsMonitor<ForegroundScreenPowerCost>(F
                 endTimeInMillis = currentSystemTime,
                 powerCostInMah = powerCostInMah
             )
-            tApmLog.d(TAG, powerCost.toString())
+            // tApmLog.d(TAG, powerCost.toString())
             dispatchMonitorData(powerCost)
             handler.removeMessages(FOREGROUND_SCREEN_POWER_COST_CHECK_MSG)
             handler.sendEmptyMessageDelayed(

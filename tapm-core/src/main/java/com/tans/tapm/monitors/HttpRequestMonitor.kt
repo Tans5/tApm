@@ -1,5 +1,7 @@
 package com.tans.tapm.monitors
 
+import android.os.Handler
+import android.os.Message
 import android.os.SystemClock
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.HttpRequest
@@ -22,13 +24,68 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.mutableMapOf
 
-class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
+class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_CALCULATE_INTERVAL) {
 
     override val isSupport: Boolean
         get() = this.apm.get() != null
+
+
+    private val lastHttpSummaryRecordSnapshot: AtomicReference<HttpSummaryRecordSnapshot?> by lazy {
+        AtomicReference(null)
+    }
+    private val calculateRequestSummaryHandler: Handler by lazy {
+        object : Handler(executor.getBackgroundThreadLooper()) {
+            override fun handleMessage(msg: Message) {
+                when (msg.what) {
+                    CALCULATE_HTTP_REQUEST_SUMMARY_MSG -> {
+                        val last = lastHttpSummaryRecordSnapshot.get()
+                        val new = HttpSummaryRecordSnapshot(
+                            time = System.currentTimeMillis(),
+                            uptime = SystemClock.uptimeMillis(),
+                            uploadDataSize = uploadDataSize.get(),
+                            downloadDataSize = downloadDataSize.get()
+                        )
+                        if (last == null) {
+                            lastHttpSummaryRecordSnapshot.set(new)
+                        } else {
+                            // bytes pre second
+                            val downloadSpeed = (new.downloadDataSize - last.downloadDataSize) / (((new.uptime - last.uptime)) / 1000L)
+                            val uploadSpeed = (new.uploadDataSize - last.uploadDataSize) / (((new.uptime - last.uptime)) / 1000L)
+                            val requests = requestsInfo.map { (k, v) ->
+                                HttpRequest.HttpRequestsSummary.Companion.SingleRequestInfo(
+                                    key = k,
+                                    dataUploadSize = v.uploadDataSize.get(),
+                                    dataDownloadSize = v.downloadDataSize.get(),
+                                    requestTimes = v.requestTimes.get()
+                                )
+                            }.sortedByDescending { it.dataUploadSize + it.dataDownloadSize }
+                            dispatchMonitorData(HttpRequest.HttpRequestsSummary(
+                                dataUploadSize = new.uploadDataSize,
+                                dataDownloadSize = new.downloadDataSize,
+                                requests = requests,
+                                speedCalculateStartTime = last.time,
+                                speedCalculateEndTime = new.time,
+                                uploadSpeed = uploadSpeed,
+                                downloadSpeed = downloadSpeed
+                            ))
+                        }
+                        sendNextTimeCheckTask()
+                    }
+                }
+            }
+
+            fun sendNextTimeCheckTask() {
+                removeMessages(CALCULATE_HTTP_REQUEST_SUMMARY_MSG)
+                sendEmptyMessageDelayed(CALCULATE_HTTP_REQUEST_SUMMARY_MSG, monitorIntervalInMillis.get())
+            }
+        }
+    }
 
     override fun onInit(apm: tApm) {
 
@@ -36,11 +93,15 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
     override fun onStart(apm: tApm) {
         attachMonitor(this)
+        lastHttpSummaryRecordSnapshot.set(null)
+        calculateRequestSummaryHandler.sendEmptyMessage(CALCULATE_HTTP_REQUEST_SUMMARY_MSG)
         tApmLog.d(TAG, "HttpRequestMonitor started.")
     }
 
     override fun onStop(apm: tApm) {
         detachMonitor(this)
+        calculateRequestSummaryHandler.removeMessages(CALCULATE_HTTP_REQUEST_SUMMARY_MSG)
+        lastHttpSummaryRecordSnapshot.set(null)
         tApmLog.d(TAG, "HttpRequestMonitor stopped.")
     }
 
@@ -75,8 +136,8 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             // Request body
             val realRequestBody = realRequest.body
             var wrapperRequest: Request
-            requesting.requestBodyContentType = realRequestBody?.contentType()?.toString()
-            requesting.requestBodyContentLength = realRequestBody?.contentLength()
+            requesting.requestBodyContentType = realRequest.contentType()
+            requesting.requestBodyContentLength = realRequest.contentLength()
             val wrapperRequestBody: WrapperRequestBody?
             if (realRequestBody != null) {
                 wrapperRequestBody = WrapperRequestBody(
@@ -97,8 +158,8 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
             requesting.isHttpSuccess = realResponse.isSuccessful
             requesting.responseHeader = realResponse.headers.toMultimap()
             requesting.responseCode = realResponse.code
-            requesting.responseBodyContentType = realResponse.body?.contentType()?.toString()
-            requesting.responseBodyContentLength = realResponse.body?.contentLength()
+            requesting.responseBodyContentType = realResponse.contentType()
+            requesting.responseBodyContentLength = realResponse.contentLength()
             val realResponseBody = realResponse.body
             val wrapperResponse: Response
             if (realResponseBody != null) {
@@ -288,8 +349,19 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
     private fun dispatchHttpTimeCost(requesting: Requesting) {
         if (!requesting.isDispatched) {
             requesting.isDispatched = true
+            requestTimesUpdate(url = requesting.url, method = requesting.method)
+            requesting.requestBodyWriteSize?.let {
+                if (it > 0) {
+                    uploadDataSizeUpdate(url = requesting.url, method = requesting.method, writeSize = it)
+                }
+            }
+            requesting.responseBodyContentLength?.let {
+                if (it > 0) {
+                    downloadDataSizeUpdate(url = requesting.url, method = requesting.method, readSize = it)
+                }
+            }
             dispatchMonitorData(
-                HttpRequest.TimeCost(
+                HttpRequest.SingleRequestRecord(
                     startTime = requesting.startTime,
                     method = requesting.method,
                     url = requesting.url,
@@ -344,16 +416,87 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
     private fun String.beautifyJsonString(): String {
         return try {
             JSONObject(this).toString(2)
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             this
+        }
+    }
+
+    private fun Request.contentType(): String? {
+        val body = body
+        return if (body == null) {
+            null
+        } else {
+            body.contentType()?.toString() ?: headers["content-type"]
+        }
+    }
+
+    private fun Request.contentLength(): Long? {
+        val body = body
+        return body?.contentLength()?.let {
+            if (it > 0) {
+                it
+            } else {
+                headers["content-length"]?.toLongOrNull()
+            }
+        }
+    }
+
+    private fun Response.contentType(): String? {
+        val body = body
+        return if (body == null) {
+            null
+        } else {
+            body.contentType()?.toString() ?: headers["content-type"]
+        }
+    }
+
+    private fun Response.contentLength(): Long? {
+        val body = body
+        return body?.contentLength()?.let {
+            if (it > 0) {
+                it
+            } else {
+                headers["content-length"]?.toLongOrNull()
+            }
         }
     }
 
     companion object : Interceptor {
 
+        private data class HttpRequestInfo(
+            val requestTimes: AtomicInteger = AtomicInteger(0),
+            val uploadDataSize: AtomicLong = AtomicLong(0),
+            val downloadDataSize: AtomicLong = AtomicLong(0)
+        )
+
+        private data class HttpSummaryRecordSnapshot(
+            val time: Long,
+            val uptime: Long,
+            val uploadDataSize: Long,
+            val downloadDataSize: Long
+        )
+
         private const val TAG = "HttpRequestMonitor"
 
         private const val MAX_HANDLE_BODY_SIZE = 1024 * 1024 * 64 // 64MB
+
+        private const val MAX_RECORD_HTTP_SIZE = 128
+
+        private const val CALCULATE_HTTP_REQUEST_SUMMARY_MSG = 0
+
+        private const val DEFAULT_HTTP_REQUEST_SUMMARY_CALCULATE_INTERVAL = 60L * 1000L * 3L // 3 min
+
+        private val uploadDataSize: AtomicLong by lazy {
+            AtomicLong(0)
+        }
+
+        private val downloadDataSize: AtomicLong by lazy {
+            AtomicLong(0)
+        }
+
+        private val requestsInfo: ConcurrentHashMap<String, HttpRequestInfo> by lazy {
+            ConcurrentHashMap()
+        }
 
         private val monitor: AtomicReference<HttpRequestMonitor?> by lazy {
             AtomicReference(null)
@@ -370,6 +513,32 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(2000L) {
 
         private fun detachMonitor(m: HttpRequestMonitor) {
             monitor.compareAndSet(m, null)
+        }
+
+        private fun requestTimesUpdate(url: String, method: String) {
+            val key = "$method->$url"
+            val info = requestsInfo[key].let {
+                it ?: if (requestsInfo.size < MAX_RECORD_HTTP_SIZE) {
+                        val new = HttpRequestInfo()
+                        val last = requestsInfo.putIfAbsent(key, new)
+                        last ?: new
+                    } else {
+                        null
+                    }
+            }
+            info?.requestTimes?.addAndGet(1)
+        }
+
+        private fun uploadDataSizeUpdate(url: String, method: String, writeSize: Long) {
+            uploadDataSize.addAndGet(writeSize)
+            val key = "$method->$url"
+            requestsInfo[key]?.uploadDataSize?.addAndGet(writeSize)
+        }
+
+        private fun downloadDataSizeUpdate(url: String, method: String, readSize: Long) {
+            downloadDataSize.addAndGet(readSize)
+            val key = "$method->$url"
+            requestsInfo[key]?.downloadDataSize?.addAndGet(readSize)
         }
     }
 }
