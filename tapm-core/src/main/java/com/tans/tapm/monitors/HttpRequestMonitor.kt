@@ -355,7 +355,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
                     uploadDataSizeUpdate(url = requesting.url, method = requesting.method, writeSize = it)
                 }
             }
-            requesting.responseBodyContentLength?.let {
+            requesting.responseBodyReadSize?.let {
                 if (it > 0) {
                     downloadDataSizeUpdate(url = requesting.url, method = requesting.method, readSize = it)
                 }
