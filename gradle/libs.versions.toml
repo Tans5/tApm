@@ -14,6 +14,7 @@ okhttp3 = "4.12.0"
 tuiutils = "1.1.1"
 tlog = "1.0.1"
 tlrucache = "1.0.1"
+tapm = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +32,11 @@ okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
 tlrucatch = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
+tapm-core = { group = "io.github.tans5", name= "tapm-core", version.ref = "tapm" }
+tapm-autoinit = { group = "io.github.tans5", name= "tapm-autoinit", version.ref = "tapm" }
+tapm-log = { group = "io.github.tans5", name= "tapm-log", version.ref = "tapm" }
+tapm-breakpad = { group = "io.github.tans5", name= "tapm-breakpad", version.ref = "tapm" }
+
 androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidx-startup" }
 
 [plugins]

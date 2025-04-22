@@ -56,7 +56,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.annotaion)
-    implementation(project(":tapm-core"))
+    // implementation(project(":tapm-core"))
+    implementation(libs.tapm.core)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
