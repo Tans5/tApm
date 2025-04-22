@@ -7,6 +7,7 @@ import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.HttpRequestMonitor
+import com.tans.tapm.monitors.MainThreadLagMonitor
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
 import okhttp3.OkHttpClient
 
@@ -23,14 +24,16 @@ class App : Application() {
         super.attachBaseContext(base)
         tApmAutoInit.addBuilderInterceptor { builder ->
             builder
-            // CpuUsage
-            .addMonitor(CpuUsageMonitor())
-            // CpuPowerCost
-            .addMonitor(CpuPowerCostMonitor())
-            // ForegroundScreenPowerCost
-            .addMonitor(ForegroundScreenPowerCostMonitor())
-            // Http Monitor
-            .addMonitor(HttpRequestMonitor())
+                // CpuUsage
+                .addMonitor(CpuUsageMonitor())
+                // CpuPowerCost
+                .addMonitor(CpuPowerCostMonitor())
+                // ForegroundScreenPowerCost
+                .addMonitor(ForegroundScreenPowerCostMonitor())
+                // Http
+                .addMonitor(HttpRequestMonitor())
+                // MainThreadLag
+                .addMonitor(MainThreadLagMonitor())
         }
 
         tApmAutoInit.addInitFinishListener {
