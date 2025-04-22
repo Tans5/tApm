@@ -11,6 +11,7 @@ import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.HttpRequestMonitor
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.MainThreadLagMonitor
+import com.tans.tapm.monitors.MemoryUsageMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
 
 @Suppress("ClassName")
@@ -28,6 +29,7 @@ class tApmLogAutoInit : Initializer<Unit> {
             apm.getMonitor(CpuPowerCostMonitor::class.java)?.addMonitorObserver(CpuPowerCostLogObserver)
             apm.getMonitor(ForegroundScreenPowerCostMonitor::class.java)?.addMonitorObserver(ForegroundScreenPowerCostLogObserver)
             apm.getMonitor(MainThreadLagMonitor::class.java)?.addMonitorObserver(MainThreadLagLogObserver)
+            apm.getMonitor(MemoryUsageMonitor::class.java)?.addMonitorObserver(MemoryUsageLogObserver)
         }
     }
 

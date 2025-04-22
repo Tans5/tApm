@@ -8,6 +8,7 @@ import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.HttpRequestMonitor
 import com.tans.tapm.monitors.MainThreadLagMonitor
+import com.tans.tapm.monitors.MemoryUsageMonitor
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
 import okhttp3.OkHttpClient
 
@@ -34,6 +35,8 @@ class App : Application() {
                 .addMonitor(HttpRequestMonitor())
                 // MainThreadLag
                 .addMonitor(MainThreadLagMonitor())
+                // MemoryUsage
+                .addMonitor(MemoryUsageMonitor())
         }
 
         tApmAutoInit.addInitFinishListener {
