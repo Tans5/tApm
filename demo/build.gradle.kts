@@ -17,6 +17,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        val debugConfig = this.getByName("debug")
+        with(debugConfig) {
+            storeFile = File(projectDir, "debugkey${File.separator}debug.jks")
+            storePassword = "123456"
+            keyAlias = "key0"
+            keyPassword = "123456"
+        }
+    }
+
     buildTypes {
         debug {
             packaging {
@@ -25,6 +35,7 @@ android {
                 }
             }
             isDebuggable = true
+            signingConfig = signingConfigs.findByName("debug")
         }
         release {
             isMinifyEnabled = false
@@ -32,6 +43,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.findByName("debug")
         }
     }
     compileOptions {
