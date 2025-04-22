@@ -1,10 +1,10 @@
 package com.tans.tapm.demo
 
 import android.view.View
-import com.tans.tapm.autoinit.AutoInit
 import com.tans.tapm.demo.databinding.MainActivityBinding
 import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
+import com.tans.tapm.tApm
 import com.tans.tuiutils.activity.BaseCoroutineStateActivity
 import com.tans.tuiutils.systembar.annotation.ContentViewFitSystemWindow
 import com.tans.tuiutils.systembar.annotation.SystemBarStyle
@@ -26,17 +26,17 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
     override fun CoroutineScope.bindContentViewCoroutine(contentView: View) {
         val viewBinding = MainActivityBinding.bind(contentView)
         viewBinding.testJavaCrashBt.clicks(this) {
-            AutoInit.getApm()?.getMonitor(JavaCrashMonitor::class.java)?.testJavaCrash()
+            tApm.Companion.getApm()?.getMonitor(JavaCrashMonitor::class.java)?.testJavaCrash()
         }
         viewBinding.blockMainThreadBt.clicks(this) {
             Thread.sleep(8_000)
         }
         viewBinding.testNativeCrashBt.clicks(this) {
-            AutoInit.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
+            tApm.Companion.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
         }
         viewBinding.testNativeCrashNewThreadBt.clicks(this) {
             Thread {
-                AutoInit.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
+                tApm.Companion.getApm()?.getMonitor(NativeCrashMonitor::class.java)?.testNativeCrash()
             }.start()
         }
         viewBinding.httpGetBt.clicks(this, clickWorkOn = Dispatchers.IO) {

@@ -160,8 +160,8 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
     companion object {
         private const val TAG = "CpuUsageMonitor"
 
-        // 2s
-        private const val CPU_USAGE_CHECK_INTERNAL = 2000L
+        // 5s
+        private const val CPU_USAGE_CHECK_INTERNAL = 5000L
 
         private const val CPU_USAGE_CHECK_MSG = 0
     }

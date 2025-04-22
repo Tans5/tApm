@@ -11,13 +11,14 @@ import com.tans.tapm.monitors.JavaCrashMonitor
 import com.tans.tapm.monitors.NativeCrashMonitor
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 @Suppress("ClassName")
 class tApm private constructor(
     val application: Application,
     val monitors: Map<Class<out Monitor<*>>, Monitor<*>>,
     val executor: Executor,
-    val initCallback: InitCallback?,
+    private val initCallback: InitCallback?,
     val cacheBaseDir: File
 ) {
     @Volatile
@@ -30,6 +31,7 @@ class tApm private constructor(
 
     @Volatile
     var deviceInfo: DeviceInfo? = null
+        private set
 
     init {
         AppLifecycleOwner.init(this)
@@ -130,7 +132,9 @@ class tApm private constructor(
             System.loadLibrary("tapm")
         }
 
-        private val isCreatedApmInstance: AtomicBoolean = AtomicBoolean(false)
+        private val apm: AtomicReference<tApm?> by lazy {
+            AtomicReference(null)
+        }
 
         class Builder(private val application: Application) {
 
@@ -184,18 +188,21 @@ class tApm private constructor(
             }
 
             fun build(): tApm {
-                return if (isCreatedApmInstance.compareAndSet(false, true)) {
-                    tApm(
-                        application = application,
-                        monitors = monitors,
-                        executor = Executor(backgroundThread = backgroundThread),
-                        initCallback = initCallback,
-                        cacheBaseDir = cacheBaseDir ?: File(application.getExternalFilesDir(null), "tApm")
-                    )
+                val apm = tApm(
+                    application = application,
+                    monitors = monitors,
+                    executor = Executor(backgroundThread = backgroundThread),
+                    initCallback = initCallback,
+                    cacheBaseDir = cacheBaseDir ?: File(application.getExternalFilesDir(null), "tApm")
+                )
+                return if (this@Companion.apm.compareAndSet(null, apm)) {
+                    apm
                 } else {
                     error("Already created tApm instance.")
                 }
             }
         }
+
+        fun getApm(): tApm? = apm.get()
     }
 }

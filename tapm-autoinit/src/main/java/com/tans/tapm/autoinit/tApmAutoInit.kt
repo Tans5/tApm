@@ -7,12 +7,13 @@ import androidx.startup.Initializer
 import com.tans.tapm.InitCallback
 import com.tans.tapm.tApm
 
+@Suppress("ClassName")
 @Keep
-class AutoInit : Initializer<tApm> {
+class tApmAutoInit : Initializer<tApm> {
 
     override fun create(context: Context): tApm {
         val builder =  tApm.Companion.Builder(context.applicationContext as Application)
-        synchronized(AutoInit::class.java) {
+        synchronized(tApmAutoInit::class.java) {
             val bs = builderInterceptors
             if (bs != null) {
                 for (b in bs) {
@@ -24,8 +25,7 @@ class AutoInit : Initializer<tApm> {
         var apm: tApm? = null
         builder.setInitCallback(object : InitCallback {
             override fun onInitFinish() {
-                synchronized(AutoInit::class.java) {
-                    Companion.apm = apm
+                synchronized(tApmAutoInit::class.java) {
                     val ls = finishListeners
                     if (ls != null) {
                         for (l in ls) {
@@ -44,28 +44,24 @@ class AutoInit : Initializer<tApm> {
 
     companion object {
 
-        private var apm: tApm? = null
-
         private var builderInterceptors: ArrayList<((tApm.Companion.Builder) -> Unit)>? = ArrayList()
 
         private var finishListeners: ArrayList<(tApm) -> Unit>? = ArrayList()
 
         fun addBuilderInterceptor(builderInterceptor: (builder: tApm.Companion.Builder) -> Unit) {
-            synchronized(AutoInit::class.java) {
+            synchronized(tApmAutoInit::class.java) {
                 builderInterceptors?.add(builderInterceptor)
             }
         }
 
         fun addInitFinishListener(l: (apm: tApm) -> Unit) {
-            synchronized(AutoInit::class.java) {
+            synchronized(tApmAutoInit::class.java) {
                 if (finishListeners == null) {
-                    l(apm!!)
+                    l(tApm.Companion.getApm()!!)
                 } else {
                     finishListeners?.add(l)
                 }
             }
         }
-
-        fun getApm(): tApm? = apm
     }
 }

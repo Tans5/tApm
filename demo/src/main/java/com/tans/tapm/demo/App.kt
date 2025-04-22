@@ -2,25 +2,11 @@ package com.tans.tapm.demo
 
 import android.app.Application
 import android.content.Context
-import com.tans.tapm.Monitor
-import com.tans.tapm.autoinit.AutoInit
-import com.tans.tapm.formatDataTimeMs
-import com.tans.tapm.model.Anr
-import com.tans.tapm.model.CpuPowerCost
-import com.tans.tapm.model.CpuUsage
-import com.tans.tapm.model.ForegroundScreenPowerCost
-import com.tans.tapm.model.HttpRequest
-import com.tans.tapm.model.JavaCrash
-import com.tans.tapm.model.NativeCrash
-import com.tans.tapm.monitors.AnrMonitor
+import com.tans.tapm.autoinit.tApmAutoInit
 import com.tans.tapm.monitors.CpuPowerCostMonitor
 import com.tans.tapm.monitors.CpuUsageMonitor
 import com.tans.tapm.monitors.ForegroundScreenPowerCostMonitor
 import com.tans.tapm.monitors.HttpRequestMonitor
-import com.tans.tapm.monitors.JavaCrashMonitor
-import com.tans.tapm.monitors.NativeCrashMonitor
-import com.tans.tapm.tApm
-import com.tans.tapm.toHumanReadablePercent
 import com.tans.tuiutils.systembar.AutoApplySystemBarAnnotation
 import okhttp3.OkHttpClient
 
@@ -35,86 +21,20 @@ class App : Application() {
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
-        AutoInit.addBuilderInterceptor { builder ->
+        tApmAutoInit.addBuilderInterceptor { builder ->
             builder
-            // JavaCrash
-            .addMonitorObserver(JavaCrashMonitor::class.java, object : Monitor.MonitorDataObserver<JavaCrash> {
-            val TAG = "JavaCrash"
-            override fun onMonitorDataUpdate(
-                t: JavaCrash,
-                apm: tApm
-            ) {
-                AppLog.e(TAG, "JavaCrashed: ${t.error.message}, TraceFile: ${t.crashTraceFilePath}")
-            }
-        })
-            // NativeCrash
-            .addMonitorObserver(NativeCrashMonitor::class.java, object : Monitor.MonitorDataObserver<NativeCrash> {
-                val TAG = "NativeCrash"
-                override fun onMonitorDataUpdate(
-                    t: NativeCrash,
-                    apm: tApm
-                ) {
-                    AppLog.e(TAG, "NativeCrash, TraceFile: ${t.crashTraceFilePath}")
-                }
-            })
-            // Anr
-            .addMonitorObserver(AnrMonitor::class.java, object : Monitor.MonitorDataObserver<Anr> {
-                val TAG = "Anr"
-                override fun onMonitorDataUpdate(
-                    t: Anr,
-                    apm: tApm
-                ) {
-                    AppLog.e(TAG, "Receive anr signal, isSigFromMe: ${t.isSigFromMe}, anrTraceFile: ${t.anrTraceFile}")
-                }
-            })
             // CpuUsage
             .addMonitor(CpuUsageMonitor())
-            .addMonitorObserver(CpuUsageMonitor::class.java, object : Monitor.MonitorDataObserver<CpuUsage> {
-                val TAG = "CpuUsage"
-                override fun onMonitorDataUpdate(
-                    t: CpuUsage,
-                    apm: tApm
-                ) {
-                    AppLog.d(TAG, "Start: ${t.startTimeInMillis.formatDataTimeMs()}, End: ${t.endTimeInMillis.formatDataTimeMs()} CpuUsage: ${t.avgCpuUsage.toHumanReadablePercent()}, CurrentProcessCpuUsage: ${t.currentProcessAvgCpuUsage.toHumanReadablePercent()}")
-                }
-            })
             // CpuPowerCost
             .addMonitor(CpuPowerCostMonitor())
-            .addMonitorObserver(CpuPowerCostMonitor::class.java, object : Monitor.MonitorDataObserver<CpuPowerCost> {
-                val TAG = "CpuPower"
-                override fun onMonitorDataUpdate(
-                    t: CpuPowerCost,
-                    apm: tApm
-                ) {
-                    AppLog.d(TAG, t.toString())
-                }
-            })
             // ForegroundScreenPowerCost
             .addMonitor(ForegroundScreenPowerCostMonitor())
-            .addMonitorObserver(ForegroundScreenPowerCostMonitor::class.java, object : Monitor.MonitorDataObserver<ForegroundScreenPowerCost> {
-                val TAG = "ForegroundScreenPowerCost"
-                override fun onMonitorDataUpdate(
-                    t: ForegroundScreenPowerCost,
-                    apm: tApm
-                ) {
-                    AppLog.d(TAG, t.toString())
-                }
-            })
             // Http Monitor
             .addMonitor(HttpRequestMonitor())
-            .addMonitorObserver(HttpRequestMonitor::class.java, object : Monitor.MonitorDataObserver<HttpRequest> {
-                val TAG = "HttpMonitor"
-                override fun onMonitorDataUpdate(
-                    t: HttpRequest,
-                    apm: tApm
-                ) {
-                    AppLog.d(TAG, t.toString())
-                }
-            })
         }
 
-        AutoInit.addInitFinishListener {
-            it.getMonitor(CpuUsageMonitor::class.java)?.setMonitorInterval(1000L * 60L * 5L)
+        tApmAutoInit.addInitFinishListener {
+            it.getMonitor(CpuUsageMonitor::class.java)?.setMonitorInterval(1000L * 10)
         }
     }
 
