@@ -74,6 +74,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
                                 uploadSpeed = uploadSpeed,
                                 downloadSpeed = downloadSpeed
                             ))
+                            lastHttpSummaryRecordSnapshot.set(new)
                         }
                         sendNextTimeCheckTask()
                     }
