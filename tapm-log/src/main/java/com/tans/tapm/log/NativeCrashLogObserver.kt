@@ -15,6 +15,7 @@ object NativeCrashLogObserver : Monitor.MonitorDataObserver<NativeCrash> {
         t.crashSummary?.let {
             log?.e(TAG, it)
         }
+        log?.flush()
     }
 
     private const val TAG = "NativeCrash"

@@ -131,11 +131,11 @@ sealed class HttpRequest {
         override fun toString(): String {
             val s = StringBuilder()
             s.appendLine("Start=${speedCalculateStartTime.formatDataTimeMs()}, End=${speedCalculateEndTime.formatDataTimeMs()}, UploadSpeed=${uploadSpeed.toHumanReadableMemorySize()}/S, DownloadSpeed=${downloadSpeed.toHumanReadableMemorySize()}/S")
-            s.appendLine("UploadSize=${dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${dataDownloadSize.toHumanReadableMemorySize()}")
+            s.append("UploadSize=${dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${dataDownloadSize.toHumanReadableMemorySize()}")
             for (r in requests) {
-                s.appendLine("  Key=${r.key}, UploadSize=${r.dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${r.dataDownloadSize.toHumanReadableMemorySize()}, RequestTimes=${r.requestTimes}")
+                s.append("\n  Key=${r.key}, UploadSize=${r.dataUploadSize.toHumanReadableMemorySize()}, DownloadSize=${r.dataDownloadSize.toHumanReadableMemorySize()}, RequestTimes=${r.requestTimes}")
             }
-            return s. toString()
+            return s.toString()
         }
 
         companion object {

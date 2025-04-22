@@ -12,6 +12,7 @@ object JavaCrashLogObserver : Monitor.MonitorDataObserver<JavaCrash> {
 
     override fun onMonitorDataUpdate(t: JavaCrash, apm: tApm) {
         log?.e(TAG, "JavaCrash: Thread=${t.thread.name}, TraceFile=${t.crashTraceFilePath}", t.error)
+        log?.flush()
     }
 
     private const val TAG = "JavaCrash"

@@ -21,7 +21,8 @@ object tApmLogs {
             logBaseDir.mkdirs()
         }
         this.baseDir.set(logBaseDir)
-
+        // Trigger CommonLog create.
+        getLog(LogType.Common)
     }
 
     fun getLog(type: LogType): tLog? {
@@ -37,7 +38,7 @@ object tApmLogs {
         val newLog = when (type) {
             LogType.Common -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "Common"))
-                    .setMaxSize(1024 * 1024 * 150) // 150M
+                    .setMaxSize(1024 * 1024 * 50) // 50M
                     .build()
             }
             LogType.CpuUsage -> {
