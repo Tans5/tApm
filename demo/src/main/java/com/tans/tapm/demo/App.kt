@@ -26,7 +26,7 @@ class App : Application() {
         tApmAutoInit.addBuilderInterceptor { builder ->
             builder
                 // CpuUsage
-                .addMonitor(CpuUsageMonitor())
+                .addMonitor(CpuUsageMonitor().apply { setMonitorInterval(1000L * 10) })
                 // CpuPowerCost
                 .addMonitor(CpuPowerCostMonitor())
                 // ForegroundScreenPowerCost
@@ -36,11 +36,7 @@ class App : Application() {
                 // MainThreadLag
                 .addMonitor(MainThreadLagMonitor())
                 // MemoryUsage
-                .addMonitor(MemoryUsageMonitor())
-        }
-
-        tApmAutoInit.addInitFinishListener {
-            it.getMonitor(CpuUsageMonitor::class.java)?.setMonitorInterval(1000L * 10)
+                .addMonitor(MemoryUsageMonitor().apply { setMonitorInterval(5000L) })
         }
     }
 
