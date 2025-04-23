@@ -14,7 +14,7 @@ okhttp3 = "4.12.0"
 tuiutils = "1.1.1"
 tlog = "1.0.1"
 tlrucache = "1.0.1"
-tapm = "1.0.0"
+tapm = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
