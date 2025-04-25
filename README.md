@@ -44,21 +44,31 @@ dependencies {
 Example Trace Output:  
 
 ```text
-*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***  
-Build fingerprint: 'Android/sdk_phone64_arm64/emu64a:14/UE1A.230829.036.A1/11228894:userdebug/test-keys'  
-Abi: arm64  
-Timestamp: 2025-04-25T16:09:43.664+08:00  
-Process: com.tans.tapm.demo (pid: 2962)  
-Signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0000000000000018  
+*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+Build fingerprint: 'Android/sdk_phone64_arm64/emu64a:14/UE1A.230829.036.A1/11228894:userdebug/test-keys'
+Revision: '0'
+Abi: 'arm64'
+Timestamp: 2025-04-25T16:09:43.664+08:00
+Process uptime: 3.0s
+Cmdline: com.tans.tapm.demo
+pid: 2962, tid: 2962, name: .tans.tapm.demo  >>> com.tans.tapm.demo <<<
+uid: 10143
+signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0000000000000018
+    x0  b4000078fdb51fd0  x1  0000007fc80b65f8  x2  0000007fc80b5310  x3  00000078ea0a3ae0
+    x4  0000007fc80b5468  x5  0000000000001071  x6  00000078e96fddea  x7  0000007fc80b5484
+    x8  000000786907a7e0  x9  0000000000000000  x10 0000000000000020  x11 0000000000000010
+    x12 000000000000a8aa  x13 036d5b4dd3ee68c3  x14 ffffffffffffffff  x15 00000000ebad6a89
+    x16 0000000000000001  x17 0000007869124c74  x18 0000007bad402000  x19 b400007a3db4d380
+    x20 0000000000000000  x21 b400007a3db4d448  x22 0000007b86777228  x23 0000007b86777228
+    x24 0000007fc80b6640  x25 b40000797db4a560  x26 000000000000106e  x27 0000007b83416bc0
+    x28 0000007fc80b6510  x29 0000007fc80b6600
+    lr  00000078e9f46c34  sp  0000007fc80b64e0  pc  0000007869124c90  pst  0000000060001000
 
-Registers:  
-    x0  b4000078fdb51fd0  x1  0000007fc80b65f8  
-    ...  
-
-Backtrace:  
-    #00 pc 00000000000f5c90  /data/app/.../base.apk!libtapm.so  
-    #01 pc 0000000000346c30  /apex/com.android.art/lib64/libart.so  
-    ...  
+64 total frames
+backtrace:
+      #00 pc 00000000000f5c90  /data/app/~~1x6f0iXwPV38jM7Ukm_K2A==/com.tans.tapm.demo-wSDJRqwwZgNAVmYLZL-4OA==/base.apk!libtapm.so (offset 0x508000) (Java_com_tans_tapm_monitors_NativeCrashMonitor_testNativeCrash+28) (BuildId: 555226fd3f71a1f93588c56edd05ce8aa2ccdc9e)
+      #01 pc 0000000000346c30  /apex/com.android.art/lib64/libart.so (art_quick_generic_jni_trampoline+144) (BuildId: d22b3b69a6db691fdd84720465c7a214)
+      #02 pc 00000000003301a4  /apex/com.android.art/lib64/libart.so (art_quick_invoke_stub+612) (BuildId: d22b3b69a6db691fdd84720465c7a214)
 ```
 
 ## Advanced Configuration
