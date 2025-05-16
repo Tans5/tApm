@@ -11,9 +11,16 @@ import com.tans.tuiutils.systembar.annotation.SystemBarStyle
 import com.tans.tuiutils.view.clicks
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.Buffer
+import okio.BufferedSink
+import okio.GzipSink
+import okio.buffer
+import java.io.IOException
 
 @SystemBarStyle
 @ContentViewFitSystemWindow
@@ -60,8 +67,12 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
         viewBinding.httpPostBt.clicks(this, clickWorkOn = Dispatchers.IO) {
             try {
                 val client = (application as App).okHttpClient
+                val buffer = Buffer()
+                buffer.write("{ \"name\": \"Tans5\" }".toByteArray())
+                val body = buffer.snapshot().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = Request.Builder()
-                    .post("{ \"name\": \"Tans5\" }".toRequestBody("application/json".toMediaTypeOrNull()))
+                    .addHeader("Content-Encoding", "gzip")
+                    .post(gzip(body))
                     .url("https://api.github.com/repos/tans5/tapm?name=Tans5")
                     .build()
                 val call = client.newCall(request)
@@ -78,5 +89,24 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
 
     companion object {
         private const val TAG = "MainActivity"
+
+        private fun gzip(body: RequestBody): RequestBody {
+            return object : RequestBody() {
+                override fun contentType(): MediaType? {
+                    return body.contentType()
+                }
+
+                override fun contentLength(): Long {
+                    return -1 // We don't know the compressed length in advance!
+                }
+
+                @Throws(IOException::class)
+                override fun writeTo(sink: BufferedSink) {
+                    val gzipSink: BufferedSink = GzipSink(sink).buffer()
+                    body.writeTo(gzipSink)
+                    gzipSink.close()
+                }
+            }
+        }
     }
 }

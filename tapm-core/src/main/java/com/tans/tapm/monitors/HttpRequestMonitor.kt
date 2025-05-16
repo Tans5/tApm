@@ -14,6 +14,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody
 import okhttp3.internal.http.promisesBody
 import okhttp3.internal.toHostHeader
+import okio.Buffer
 import okio.BufferedSink
 import okio.BufferedSource
 import okio.GzipSource
@@ -143,7 +144,8 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
             if (realRequestBody != null) {
                 wrapperRequestBody = WrapperRequestBody(
                     realRequestBody = realRequestBody,
-                    requesting = requesting
+                    requesting = requesting,
+                    isGzipEncoding = "gzip".equals(realRequest.header("Content-Encoding"), ignoreCase = true)
                 )
                 wrapperRequest = realRequest.newBuilder()
                     .method(realRequest.method, wrapperRequestBody)
@@ -218,6 +220,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
     private inner class WrapperRequestBody(
         private val realRequestBody: RequestBody,
         private val requesting: Requesting,
+        private val isGzipEncoding: Boolean
     ) : RequestBody() {
 
         private val bodyBuffer: ArrayList<Byte>? = if (contentType().isTextType() && contentLength() <= MAX_HANDLE_BODY_SIZE) {
@@ -240,13 +243,19 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
             val realOutputStream = sink.outputStream()
             val wrapperSink = WrapperOutputStream(realOutputStream).sink().buffer()
             realRequestBody.writeTo(wrapperSink)
-            wrapperSink.flush()
+            if (wrapperSink.isOpen) {
+                wrapperSink.flush()
+            }
         }
 
         fun dispatchEnd() {
             requesting.requestBodyWriteSize = writeSize
             if (bodyBuffer != null && bodyBuffer.isNotEmpty() && writeSize <= MAX_HANDLE_BODY_SIZE) {
-                val s = bodyBuffer.toByteArray().toString(Charsets.UTF_8)
+                val s = if (isGzipEncoding) {
+                    GzipSource(Buffer().write(bodyBuffer.toByteArray())).use { it.buffer().readUtf8() }
+                } else {
+                    bodyBuffer.toByteArray().toString(Charsets.UTF_8)
+                }
                 if (contentType().isJsonType()) {
                     requesting.requestBodyText = s.beautifyJsonString()
                 } else {
