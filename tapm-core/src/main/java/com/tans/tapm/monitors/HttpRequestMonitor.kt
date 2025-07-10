@@ -13,7 +13,6 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody
 import okhttp3.internal.http.promisesBody
-import okhttp3.internal.toHostHeader
 import okio.Buffer
 import okio.BufferedSink
 import okio.BufferedSource
@@ -118,7 +117,6 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
 
             // Url
             val url = realRequest.url.let {
-                it.toHostHeader()
                 "${it.scheme}://${it.host}:${it.port}${it.encodedPath}"
             }
             requesting.url = url
@@ -165,23 +163,17 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
             requesting.responseBodyContentLength = realResponse.contentLength()
             val realResponseBody = realResponse.body
             val wrapperResponse: Response
-            if (realResponseBody != null) {
-                val isGzipEncoding = "gzip".equals(realResponse.header("Content-Encoding"), ignoreCase = true) && realResponse.promisesBody()
-                wrapperResponse = realResponse.newBuilder()
-                    .body(
-                        WrapperResponseBody(
-                            realResponseBody = realResponseBody,
-                            requesting = requesting,
-                            requestStartTime = requestStartTime,
-                            isGzipEncoding = isGzipEncoding
-                        )
+            val isGzipEncoding = "gzip".equals(realResponse.header("Content-Encoding"), ignoreCase = true) && realResponse.promisesBody()
+            wrapperResponse = realResponse.newBuilder()
+                .body(
+                    WrapperResponseBody(
+                        realResponseBody = realResponseBody,
+                        requesting = requesting,
+                        requestStartTime = requestStartTime,
+                        isGzipEncoding = isGzipEncoding
                     )
-                    .build()
-            } else {
-                requesting.httpRequestCostInMillis = SystemClock.uptimeMillis() - requestStartTime
-                dispatchHttpTimeCost(requesting)
-                wrapperResponse = realResponse
-            }
+                )
+                .build()
             wrapperResponse
         } catch (e: Throwable) {
             requesting.error = e
@@ -453,16 +445,12 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
 
     private fun Response.contentType(): String? {
         val body = body
-        return if (body == null) {
-            null
-        } else {
-            body.contentType()?.toString() ?: headers["content-type"]
-        }
+        return body.contentType()?.toString() ?: headers["content-type"]
     }
 
     private fun Response.contentLength(): Long? {
         val body = body
-        return body?.contentLength()?.let {
+        return body.contentLength().let {
             if (it > 0) {
                 it
             } else {
