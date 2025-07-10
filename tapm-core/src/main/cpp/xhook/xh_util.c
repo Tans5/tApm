@@ -37,6 +37,19 @@
 #include "xh_errno.h"
 #include "xh_log.h"
 
+
+#ifndef PAGE_SIZE
+static inline size_t get_system_pagesize() {
+    static size_t page_size = 0;
+    if (page_size == 0) {
+        page_size = sysconf(_SC_PAGESIZE);
+        if (page_size <= 0) page_size = 4096 * 4; // 安全回退
+    }
+    return page_size;
+}
+#define PAGE_SIZE   (get_system_pagesize())
+#endif
+#define PAGE_MASK   (~(PAGE_SIZE - 1))
 #define PAGE_START(addr) ((addr) & PAGE_MASK)
 #define PAGE_END(addr)   (PAGE_START(addr + sizeof(uintptr_t) - 1) + PAGE_SIZE)
 #define PAGE_COVER(addr) (PAGE_END(addr) - PAGE_START(addr))
