@@ -106,7 +106,7 @@ publishing {
             afterEvaluate {
                 artifact(tasks.getByName("bundleReleaseAar"))
             }
-            val sourceCode by tasks.creating(Jar::class.java) {
+            val sourceCode by tasks.registering(Jar::class) {
                 archiveClassifier.convention("sources")
                 archiveClassifier.set("sources")
                 from(android.sourceSets.getByName("main").java.srcDirs)

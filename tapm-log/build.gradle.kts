@@ -34,8 +34,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        jvmToolchain(11)
     }
     buildFeatures {
         buildConfig = true
@@ -91,7 +91,7 @@ publishing {
             afterEvaluate {
                 artifact(tasks.getByName("bundleReleaseAar"))
             }
-            val sourceCode by tasks.creating(Jar::class.java) {
+            val sourceCode by tasks.registering(Jar::class) {
                 archiveClassifier.convention("sources")
                 archiveClassifier.set("sources")
                 from(android.sourceSets.getByName("main").java.srcDirs)
