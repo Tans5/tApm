@@ -27,11 +27,11 @@ android {
         }
     }
 
-    packaging {
-        jniLibs {
-            keepDebugSymbols += listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so")
-        }
-    }
+//    packaging {
+//        jniLibs {
+//            keepDebugSymbols += listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so")
+//        }
+//    }
 
     buildTypes {
         debug {
@@ -53,8 +53,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+
+    kotlin {
+        jvmToolchain(11)
     }
     buildFeatures {
         viewBinding {
@@ -81,9 +82,16 @@ dependencies {
     implementation(libs.tlrucatch)
 
     implementation(project(":tapm-core"))
-    implementation(project(":tapm-autoinit"))
-    implementation(project(":tapm-log"))
-    implementation(project(":tapm-breakpad"))
+    implementation(project(":tapm-autoinit")) {
+        exclude("com.github.tans5", "tapm-core")
+    }
+    implementation(project(":tapm-log")) {
+        exclude("com.github.tans5", "tapm-core")
+    }
+    implementation(project(":tapm-breakpad")) {
+        exclude("com.github.tans5", "tapm-core")
+        exclude("com.github.tans5", "tapm-autoinit")
+    }
 
 //    implementation(libs.tapm.core)
 //    implementation(libs.tapm.autoinit)
