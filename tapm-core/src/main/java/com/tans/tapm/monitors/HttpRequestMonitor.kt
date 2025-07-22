@@ -216,7 +216,7 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
     ) : RequestBody() {
 
         private val bodyBuffer: ArrayList<Byte>? = if (contentType().isTextType() && contentLength() <= MAX_HANDLE_BODY_SIZE) {
-            ArrayList<Byte>()
+            ArrayList()
         } else {
             null
         }
@@ -263,6 +263,16 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
                 }
                 realOutputStream.write(b)
                 writeSize ++
+            }
+
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                for (i in off until len) {
+                    if (writeSize < MAX_HANDLE_BODY_SIZE) {
+                        bodyBuffer?.add(b[i])
+                    }
+                    writeSize ++
+                }
+                realOutputStream.write(b, off, len)
             }
         }
     }
@@ -344,6 +354,26 @@ class HttpRequestMonitor : AbsMonitor<HttpRequest>(DEFAULT_HTTP_REQUEST_SUMMARY_
                     readSize ++
                 }
                 return readResult
+            }
+
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                val readSize = try {
+                    realInputStream.read(b, off, len)
+                } catch (e: Throwable) {
+                    dispatchEnd(e)
+                    throw e
+                }
+                if (readSize == -1) {
+                    dispatchEnd(null)
+                } else {
+                    for (i in off until readSize) {
+                        if (bodyBuffer != null && readSize < MAX_HANDLE_BODY_SIZE) {
+                            bodyBuffer.add(b[i])
+                        }
+                        this@WrapperResponseBody.readSize ++
+                    }
+                }
+                return readSize
             }
         }
     }
