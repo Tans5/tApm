@@ -56,7 +56,7 @@ class MainActivity : BaseCoroutineStateActivity<Unit>(Unit) {
                 val call = client.newCall(request)
                 val response = call.execute()
                 response.use {
-                    val responseString = response.body?.string()
+                    val responseString = response.body.string()
                     AppLog.d(TAG, "Http Get resp: $responseString")
                 }
             } catch (e: Throwable) {

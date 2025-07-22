@@ -1,0 +1,40 @@
+package com.tans.tapm.chipset
+
+enum class ChipsetSeries(
+    val seriesName: String,
+    val vendor: ChipsetVendor
+) {
+    Unknown("Unknown", ChipsetVendor.Unknown),
+    QualcommQsd("QSD", ChipsetVendor.Qualcomm),
+    QualcommMsm("MSM", ChipsetVendor.Qualcomm),
+    QualcommApq("APQ", ChipsetVendor.Qualcomm),
+    QualcommSnapdragon("Snapdragon ", ChipsetVendor.Qualcomm),
+    MediaTekMt("MT", ChipsetVendor.MediaTek),
+    SamsungExynos("Exynos ", ChipsetVendor.Samsung),
+    HisiliconK3v("K3V", ChipsetVendor.HiSilicon),
+    HisiliconHi("Hi", ChipsetVendor.HiSilicon),
+    HisiliconKirin("Kirin ", ChipsetVendor.HiSilicon),
+    ActionsAtm("ATM", ChipsetVendor.Actions),
+    AllwinnerA("A", ChipsetVendor.Allwinner),
+    AmlogicAml("AML", ChipsetVendor.Amlogic),
+    AmlogicS("S", ChipsetVendor.Amlogic),
+    BroadcomBcm("BCM", ChipsetVendor.Broadcom),
+    LGNuclun("Nuclun ", ChipsetVendor.LG),
+    LeadcoreLc("LC", ChipsetVendor.Leadcore),
+    MarvellPxa("PXA", ChipsetVendor.Marvell),
+    MStar6a("6A", ChipsetVendor.MStar),
+    NovathorU("U", ChipsetVendor.Novathor),
+    NvidiaTegraT("Tegra T", ChipsetVendor.Nvidia),
+    NvidiaTegraAp("Tegra AP", ChipsetVendor.Nvidia),
+    NvidiaTegraSl("Tegra SL", ChipsetVendor.Nvidia),
+    PineconeSurgeS("Surge S", ChipsetVendor.Pinecone),
+    RenesasMp("MP", ChipsetVendor.Renesas),
+    RockchipRk("RK", ChipsetVendor.Rockchip),
+    SpreadtrumSc("SC", ChipsetVendor.Spredtrum),
+    TelechipsTcc("TCC", ChipsetVendor.Telechips),
+    TexasInstrumentsOmap("OMAP", ChipsetVendor.TexasInstruments),
+    UnisocT("T", ChipsetVendor.Unisoc),
+    UnisocUms("UMS", ChipsetVendor.Unisoc),
+    WonderMediaWm("WM", ChipsetVendor.WonderMedia),
+    GoogleTensor("Tensor G", ChipsetVendor.Google)
+}

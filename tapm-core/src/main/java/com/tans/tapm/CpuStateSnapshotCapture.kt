@@ -9,7 +9,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 
-class CpuStateSnapshotCapture(powerProfile: PowerProfile?) {
+class CpuStateSnapshotCapture internal constructor(powerProfile: PowerProfile?) {
 
     val cpuCoreCount: Int = powerProfile?.cpuProfile?.coreCount ?: Runtime.getRuntime().availableProcessors()
 

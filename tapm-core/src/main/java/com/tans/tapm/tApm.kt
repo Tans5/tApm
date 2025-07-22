@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Application
 import android.os.Build
 import android.os.HandlerThread
+import com.tans.tapm.chipset.getChipsetInfo
 import com.tans.tapm.internal.tApmLog
 import com.tans.tapm.model.DeviceInfo
 import com.tans.tapm.monitors.AnrMonitor
@@ -99,8 +100,10 @@ class tApm private constructor(
                  33 -> "Android 13"
                  34 -> "Android 14"
                  35 -> "Android 15"
+                 36 -> "Android 16"
                  else -> "Unknown"
              },
+             chipset = getChipsetInfo(),
              cpuCoreSize = powerProfile?.cpuProfile?.coreCount ?: Runtime.getRuntime().availableProcessors(),
              cpuClusters = powerProfile?.cpuProfile?.cluster?.map {
                  DeviceInfo.Companion.CpuCluster(
