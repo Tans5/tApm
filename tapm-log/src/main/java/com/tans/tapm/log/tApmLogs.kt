@@ -38,27 +38,27 @@ object tApmLogs {
         val newLog = when (type) {
             LogType.Common -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "Common"))
-                    .setMaxSize(1024 * 1024 * 50) // 50M
+                    .setMaxSize(commonLogSize)
                     .build()
             }
             LogType.CpuUsage -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "CpuUsage"))
-                    .setMaxSize(1024 * 1024 * 50) // 50M
+                    .setMaxSize(cpuUsageLogSize)
                     .build()
             }
             LogType.MemoryUsage -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "MemoryUsage"))
-                    .setMaxSize(1024 * 1024 * 50) // 50M
+                    .setMaxSize(memoryUsageLogSize)
                     .build()
             }
             LogType.HttpRequest -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "HttpRequest"))
-                    .setMaxSize(1024 * 1024 * 200) // 200M
+                    .setMaxSize(httpRequestLogSize)
                     .build()
             }
             LogType.MainThreadLag -> {
                 tLog.Companion.Builder(baseDir = File(baseDir, "MainThreadLag"))
-                    .setMaxSize(1024 * 1024 * 100) // 100M
+                    .setMaxSize(mainThreadLagLogSize)
                     .build()
             }
         }
@@ -74,4 +74,25 @@ object tApmLogs {
         HttpRequest,
         MainThreadLag
     }
+
+    // 50M
+    @Volatile
+    var commonLogSize = 1024 * 1024 * 50L
+
+    // 50M
+    @Volatile
+    var cpuUsageLogSize = 1024 * 1024 * 50L
+
+    // 50M
+    @Volatile
+    var memoryUsageLogSize = 1024 * 1024 * 50L
+
+    // 200M
+    @Volatile
+    var httpRequestLogSize = 1024 * 1024 * 200L
+
+    // 100M
+    @Volatile
+    var mainThreadLagLogSize = 1024 * 1024 * 100L
+
 }
