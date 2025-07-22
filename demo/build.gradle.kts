@@ -79,7 +79,7 @@ dependencies {
 
     implementation(libs.tuiutils)
     implementation(libs.tlog)
-    implementation(libs.tlrucatch)
+    implementation(libs.tlrucache)
 
     implementation(project(":tapm-core"))
     implementation(project(":tapm-autoinit")) {

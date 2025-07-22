@@ -24,9 +24,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
 
             override fun handleMessage(msg: Message) {
                 val lastCpuState = lastCpuStateSnapshot.get()
-                val currentCpuStateBuffer = cpuStateSnapshotCapture!!.readCpuStateSnapshotBuffer()!!
-                val currentCpuState =
-                    cpuStateSnapshotCapture!!.parseCpuStateSnapshotBuffer(currentCpuStateBuffer)
+                val currentCpuState = cpuStateSnapshotCapture!!.readCpuStateSnapshot()
                 if (lastCpuState == null) {
                     lastCpuStateSnapshot.set(currentCpuState)
                     sendNextTimeCheckTask()
@@ -65,6 +63,7 @@ class CpuUsageMonitor : AbsMonitor<CpuUsage>(defaultMonitorIntervalInMillis = CP
 
     override fun onStop(apm: tApm) {
         handler.removeMessages(CPU_USAGE_CHECK_MSG)
+        cpuStateSnapshotCapture?.clearBufferPoolMemory()
         tApmLog.d(TAG, "CpuUsageMonitor stopped.")
     }
 

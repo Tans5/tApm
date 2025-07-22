@@ -65,6 +65,7 @@ android {
 dependencies {
     implementation(libs.androidx.annotaion)
     implementation(libs.okhttp3)
+    implementation(libs.tlrucache)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

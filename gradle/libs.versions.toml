@@ -31,7 +31,7 @@ okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okht
 okhttp3-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp3" }
 tuiutils = { group = "io.github.tans5", name = "tuiutils", version.ref = "tuiutils"}
 tlog = { group = "io.github.tans5", name = "tlog", version.ref = "tlog" }
-tlrucatch = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
+tlrucache = { group = "io.github.tans5", name = "tlrucache", version.ref = "tlrucache" }
 tapm-core = { group = "io.github.tans5", name= "tapm-core", version.ref = "tapm" }
 tapm-autoinit = { group = "io.github.tans5", name= "tapm-autoinit", version.ref = "tapm" }
 tapm-log = { group = "io.github.tans5", name= "tapm-log", version.ref = "tapm" }

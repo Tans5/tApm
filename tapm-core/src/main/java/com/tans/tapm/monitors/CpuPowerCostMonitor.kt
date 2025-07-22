@@ -32,8 +32,7 @@ class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERN
             override fun handleMessage(msg: Message) {
                 when (msg.what) {
                     CPU_POWER_COST_CHECK_MSG -> {
-                        val buffer = cpuStateSnapshotCapture!!.readCpuStateSnapshotBuffer()!!
-                        val cpuStateSnapshot = cpuStateSnapshotCapture!!.parseCpuStateSnapshotBuffer(buffer)
+                        val cpuStateSnapshot = cpuStateSnapshotCapture!!.readCpuStateSnapshot()
                         val powerCost = calculateCpuPowerCostFromUptime(cpuStateSnapshot)
                         val lastPowerCost = lastPowerCostFromUptime.get()
                         if (lastPowerCost != null) {
@@ -74,12 +73,12 @@ class CpuPowerCostMonitor : AbsMonitor<CpuPowerCost>(CPU_POWER_COST_CHECK_INTERN
 
     override fun onStop(apm: tApm) {
         handler.removeMessages(CPU_POWER_COST_CHECK_MSG)
+        cpuStateSnapshotCapture?.clearBufferPoolMemory()
         tApmLog.d(TAG, "CpuPowerCostMonitor stopped.")
     }
 
     private fun check() {
-        val b = cpuStateSnapshotCapture!!.readCpuStateSnapshotBuffer()!!
-        val cpuStateSnapshot = cpuStateSnapshotCapture!!.parseCpuStateSnapshotBuffer(b)
+        val cpuStateSnapshot = cpuStateSnapshotCapture!!.readCpuStateSnapshot()
         val coreStates = cpuStateSnapshot.coreStates
         val cpuProfile = powerProfile!!.cpuProfile
         for (s in coreStates) {
